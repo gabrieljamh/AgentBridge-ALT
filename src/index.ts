@@ -12,9 +12,12 @@ import {
   RATE_LIMIT_WINDOW_MS
 } from './config.ts';
 import { recordTokenUsage, readTokenUsage, flushTokenUsage } from './services/token-tracking.ts';
-import { extractClientIp, extractUserPrompt, saveLastPrompt } from './services/lastPrompt.ts';
-import { saveLastError } from './services/lastErrors.ts';
-import { saveEmptyPrompt } from './services/emptyPrompt.ts';
+import { extractClientIp, extractUserPrompt } from './services/lastPrompt.ts';
+// [DESLIGADO] saveLastPrompt nao e mais importado — last_prompt.json desativado.
+// Para reativar, restaure: extractClientIp, extractUserPrompt, saveLastPrompt
+// import { extractClientIp, extractUserPrompt, saveLastPrompt } from './services/lastPrompt.ts';
+// import { saveLastError } from './services/lastErrors.ts';
+// import { saveEmptyPrompt } from './services/emptyPrompt.ts';
 import { responsesApi, anthropicMessagesApi } from './routes/compatibility.ts';
 import { withLocalToolInstructions } from './routes/toolInstructions.ts';
 import { forwardToNvidia } from './services/nvidia.ts';
@@ -198,6 +201,8 @@ async function invokeChat(
   // Detecta prompt vazio ANTES de processar: registra no empty_prompt.json
   // o body completo (messages, campo original, content) para diagnosticar.
   const extractedPrompt = extractUserPrompt(body);
+  // [DESLIGADO] saveEmptyPrompt comentado — empty_prompt.json nao sera salvo.
+  /*
   if (!extractedPrompt) {
     void saveEmptyPrompt({
       protocol: options.protocol || 'Chat Completions',
@@ -208,9 +213,14 @@ async function invokeChat(
       body
     });
   }
+  */
 
   // Salva last_prompt.json sem clonar/consumir streams SSE em paralelo.
   // Em streaming, o texto e capturado pelo proprio leitor que encaminha chunks.
+  //
+  // [DESLIGADO] Bloco que depenna savePromptEntry/saveLastPromptAsync foi
+  // comentado a pedido — last_prompt.json nao sera mais salvo.
+  /*
   const savedWithIp = clientIp || '127.0.0.1';
   let promptSaved = false;
   const savePromptEntry = (responseText: string, finalModel?: string) => {
@@ -224,21 +234,22 @@ async function invokeChat(
       savedAt: ''
     });
   };
+  */
 
   const response = await forwardToNvidia(upstreamBody, fetch, undefined, {}, {
     resolveModel,
     enableHedge,
-    abortSignal: options.abortSignal,
-    onResponseText: savePromptEntry
+    abortSignal: options.abortSignal
   });
 
   if (!response.ok) {
-    void captureAndLogUpstreamError(response, body, savedWithIp);
+    void captureAndLogUpstreamError(response, body, clientIp || '127.0.0.1');
   }
 
-  if (!promptSaved && !(response.headers.get('content-type') || '').includes('text/event-stream')) {
-    void saveLastPromptAsync(response, body, savedWithIp, savePromptEntry);
-  }
+  // [DESLIGADO] saveLastPromptAsync removido do fluxo — last_prompt.json desligado.
+  // if (!promptSaved && !(response.headers.get('content-type') || '').includes('text/event-stream')) {
+  //   void saveLastPromptAsync(response, body, savedWithIp, savePromptEntry);
+  // }
 
   return response;
 }
@@ -283,6 +294,8 @@ async function invokeChatDirect(
     throw err;
   }
   const extractedPrompt = extractUserPrompt(body);
+  // [DESLIGADO] saveEmptyPrompt comentado — empty_prompt.json nao sera salvo.
+  /*
   if (!extractedPrompt) {
     void saveEmptyPrompt({
       protocol: options.protocol || 'Direct Chat Completions',
@@ -293,6 +306,7 @@ async function invokeChatDirect(
       body
     });
   }
+  */
   const overridden = { ...body, model: requested };
   const upstreamBody = options.localToolInstructions === false
     ? overridden
@@ -305,6 +319,10 @@ async function invokeChatDirect(
 }
 
 // Extrai o texto de resposta assincrono do Response e salva no last_prompt.json
+//
+// [DESLIGADO] Funcao comentada a pedido — last_prompt.json nao sera mais salvo.
+// Para reativar, descomente o bloco e restaure as chamadas em handleChatCompletions.
+/*
 async function saveLastPromptAsync(
   response: Response,
   body: Record<string, unknown>,
@@ -337,6 +355,7 @@ async function saveLastPromptAsync(
     // Ignora erros de parse — nao pode derrubar a resposta
   }
 }
+*/
 
 function extractResponseContent(json: Record<string, unknown>): string {
   const choices = json.choices as Array<{ message?: { content?: string } }> | undefined;
@@ -349,6 +368,9 @@ function extractResponseContent(json: Record<string, unknown>): string {
   return JSON.stringify(json);
 }
 
+// [DESLIGADO] extractSseContent so era usado por saveLastPromptAsync (comentado acima).
+// Para reativar, descomente junto com saveLastPromptAsync.
+/*
 function extractSseContent(text: string): string {
   const lines = text.split('\n');
   let content = '';
@@ -369,6 +391,7 @@ function extractSseContent(text: string): string {
   }
   return content;
 }
+*/
 
 // Le o corpo de erro de uma Response nao-OK e salva no last_errors.json.
 // Clona a response para nao consumir o stream original que sera retornado ao cliente.
@@ -386,6 +409,8 @@ async function captureAndLogUpstreamError(
       errorBody = '';
     }
     const model = typeof body.model === 'string' ? body.model : '';
+    // [DESLIGADO] saveLastError comentado — last_errors.json nao sera salvo.
+    /*
     void saveLastError({
       savedAt: '',
       model,
@@ -394,6 +419,7 @@ async function captureAndLogUpstreamError(
       errorStatus: response.status,
       errorBody
     });
+    */
   } catch {
     // Ignora — nao pode derrubar a resposta ao cliente
   }
@@ -462,6 +488,8 @@ app.post('/v1/chat/completions', async (context) => {
     });
   } catch (error: any) {
     const status = error?.status === 403 ? 403 : 503;
+    // [DESLIGADO] saveLastError comentado — last_errors.json nao sera salvo.
+    /*
     void saveLastError({
       savedAt: '',
       model: '',
@@ -470,6 +498,7 @@ app.post('/v1/chat/completions', async (context) => {
       errorStatus: status,
       errorBody: error?.stack || String(error)
     });
+    */
     return context.json({ error: { type: 'proxy_error', message: error.message } }, status);
   }
 });
@@ -478,6 +507,8 @@ app.post('/v1/responses', async (context) => {
     return await responsesApi(context, (body) => invokeChat(body, clientIpMap.get(context) || '', { abortSignal: context.req.raw.signal, protocol: 'Responses' }));
   } catch (error: any) {
     const status = error?.status === 403 ? 403 : 503;
+    // [DESLIGADO] saveLastError comentado — last_errors.json nao sera salvo.
+    /*
     void saveLastError({
       savedAt: '',
       model: '',
@@ -486,6 +517,7 @@ app.post('/v1/responses', async (context) => {
       errorStatus: status,
       errorBody: error?.stack || String(error)
     });
+    */
     return context.json({ error: { type: 'proxy_error', message: error.message } }, status);
   }
 });
@@ -494,6 +526,8 @@ app.post('/v1/messages', async (context) => {
     return await anthropicMessagesApi(context, (body) => invokeChat(body, clientIpMap.get(context) || '', { abortSignal: context.req.raw.signal, protocol: 'Anthropic Messages' }));
   } catch (error: any) {
     const status = error?.status === 403 ? 403 : 503;
+    // [DESLIGADO] saveLastError comentado — last_errors.json nao sera salvo.
+    /*
     void saveLastError({
       savedAt: '',
       model: '',
@@ -502,6 +536,7 @@ app.post('/v1/messages', async (context) => {
       errorStatus: status,
       errorBody: error?.stack || String(error)
     });
+    */
     return context.json({ error: { type: 'proxy_error', message: error.message } }, status);
   }
 });
@@ -551,6 +586,8 @@ app.post('/v1/direct/chat/completions', async (context) => {
     });
   } catch (error: any) {
     const status = error?.status === 400 ? 400 : error?.status === 403 ? 403 : 503;
+    // [DESLIGADO] saveLastError comentado — last_errors.json nao sera salvo.
+    /*
     void saveLastError({
       savedAt: '',
       model: '',
@@ -559,6 +596,7 @@ app.post('/v1/direct/chat/completions', async (context) => {
       errorStatus: status,
       errorBody: error?.stack || String(error)
     });
+    */
     return context.json(
       { error: { type: 'proxy_error', message: error.message } },
       status
@@ -572,6 +610,8 @@ app.post('/v1/direct/responses', async (context) => {
     return await responsesApi(context, (body) => invokeChatDirect(body, { protocol: 'Direct Responses' }));
   } catch (error: any) {
     const status = error?.status === 400 ? 400 : error?.status === 403 ? 403 : 503;
+    // [DESLIGADO] saveLastError comentado — last_errors.json nao sera salvo.
+    /*
     void saveLastError({
       savedAt: '',
       model: '',
@@ -580,6 +620,7 @@ app.post('/v1/direct/responses', async (context) => {
       errorStatus: status,
       errorBody: error?.stack || String(error)
     });
+    */
     return context.json(
       { error: { type: 'proxy_error', message: error.message } },
       status
@@ -591,6 +632,8 @@ app.post('/v1/direct/messages', async (context) => {
     return await anthropicMessagesApi(context, (body) => invokeChatDirect(body, { protocol: 'Direct Anthropic Messages' }));
   } catch (error: any) {
     const status = error?.status === 400 ? 400 : error?.status === 403 ? 403 : 503;
+    // [DESLIGADO] saveLastError comentado — last_errors.json nao sera salvo.
+    /*
     void saveLastError({
       savedAt: '',
       model: '',
@@ -599,6 +642,7 @@ app.post('/v1/direct/messages', async (context) => {
       errorStatus: status,
       errorBody: error?.stack || String(error)
     });
+    */
     return context.json(
       { error: { type: 'proxy_error', message: error.message } },
       status

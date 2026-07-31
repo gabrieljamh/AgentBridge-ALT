@@ -59,6 +59,10 @@ async function readEntries(filePath: string): Promise<LastErrorEntry[]> {
 // Adiciona uma nova entrada de erro no log rotativo mantendo no maximo MAX_ENTRIES.
 // A entrada mais recente fica no indice 0 (topo do array).
 // Nunca lanca: uma falha ao salvar o log nao pode derrubar a resposta ao cliente.
+//
+// [DESLIGADO] saveLastError comentado — last_errors.json nao sera mais salvo.
+// Para reativar, descomente o bloco abaixo.
+/*
 export function saveLastError(entry: LastErrorEntry): Promise<void> {
   const directory = lastErrorDirectory();
   const filePath = lastErrorPath(directory);
@@ -87,3 +91,4 @@ export function saveLastError(entry: LastErrorEntry): Promise<void> {
 
   return writeQueue;
 }
+*/

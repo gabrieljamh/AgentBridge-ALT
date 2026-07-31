@@ -101,6 +101,10 @@ async function readEntries(): Promise<LastPromptEntry[]> {
 // Adiciona uma nova entrada no log rotativo mantendo no maximo MAX_ENTRIES.
 // A entrada mais recente fica no indice 0 (topo do array).
 // Nunca lanca: uma falha ao salvar o log nao pode derrubar a resposta ao cliente.
+//
+// [DESLIGADO] saveLastPrompt foi comentado a pedido — o last_prompt.json nao sera salvo.
+// Para reativar, basta descomentar o bloqueio abaixo.
+/*
 export function saveLastPrompt(entry: LastPromptEntry): Promise<void> {
   writeQueue = writeQueue
     .catch(() => undefined)
@@ -128,6 +132,7 @@ export function saveLastPrompt(entry: LastPromptEntry): Promise<void> {
 
   return writeQueue;
 }
+*/
 
 // Extrai o IP do cliente de um Hono Context.
 // Em Electron/desktop, usa o IP da conexao TCP. Em dev, pode vir via

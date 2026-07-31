@@ -107,6 +107,9 @@ function truncateMessages(body: Record<string, unknown>): string {
   return summary.join('\n');
 }
 
+// [DESLIGADO] saveEmptyPrompt comentado — empty_prompt.json nao sera mais salvo.
+// Para reativar, descomente o bloco abaixo.
+/*
 export function saveEmptyPrompt(entry: {
   protocol: string;
   clientIp: string;
@@ -149,3 +152,4 @@ export function saveEmptyPrompt(entry: {
 
   return writeQueue;
 }
+*/

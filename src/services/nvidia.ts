@@ -22,11 +22,14 @@ import {
   type AcquireApiKeyOptions
 } from './runtime.ts';
 
-import { saveLastError } from './lastErrors.ts';
-import { extractUserPrompt } from './lastPrompt.ts';
+// import { saveLastError } from './lastErrors.ts';
+// import { extractUserPrompt } from './lastPrompt.ts';
 
 export type NvidiaFetch = typeof fetch;
 
+// [DESLIGADO] captureUpstreamErrorForLog comentado — last_errors.json nao sera salvo.
+// Para reativar, descomente a funcao e o import de saveLastError acima.
+/*
 async function captureUpstreamErrorForLog(
   response: Response,
   body: Record<string, unknown>,
@@ -52,6 +55,7 @@ async function captureUpstreamErrorForLog(
     // Ignora — nao pode derrubar a request
   }
 }
+*/
 
 type ForwardOptions = {
   firstResponseTimeoutMs?: number;
@@ -585,6 +589,9 @@ function buildSseUpstreamErrorDebug(input: {
   }, null, 2);
 }
 
+// [DESLIGADO] logSseUpstreamError e logEmptyNvidiaResponse comentados — last_errors.json nao sera salvo.
+// Para reativar, descomente as funcoes e o import de saveLastError acima.
+/*
 function logSseUpstreamError(input: {
   body: Record<string, unknown>;
   response: Response;
@@ -624,6 +631,7 @@ function logEmptyNvidiaResponse(input: {
     errorBody: buildEmptyResponseDebug(input)
   });
 }
+*/
 function ensureSseDone(text: string) {
   if (/(^|\n)data:\s*\[DONE\]\s*$/m.test(text.trimEnd())) return text;
   const separator = text.endsWith('\n\n') || text.endsWith('\r\n\r\n') ? '' : '\n\n';
@@ -816,6 +824,8 @@ async function makeSuccessResponse(
       model: attempt.model,
       timestamp: Date.now()
     });
+    // [DESLIGADO] logSseUpstreamError comentado — last_errors.json nao sera salvo.
+    /*
     logSseUpstreamError({
       body: sourceBody,
       response: attempt.response,
@@ -826,6 +836,7 @@ async function makeSuccessResponse(
       sseError,
       requestStartedAt
     });
+    */
     if (sseError.status === 500 && http500State) http500State.count++;
     return undefined;
   }
@@ -852,6 +863,8 @@ async function makeSuccessResponse(
       timestamp: Date.now()
     });
     const emptyAttempt = (emptyRetryState?.count || 0) + 1;
+    // [DESLIGADO] logEmptyNvidiaResponse comentado — last_errors.json nao sera salvo.
+    /*
     logEmptyNvidiaResponse({
       body: sourceBody,
       response: attempt.response,
@@ -863,6 +876,7 @@ async function makeSuccessResponse(
       maxEmptyRetries: EMPTY_RESPONSE_MAX_RETRIES,
       requestStartedAt
     });
+    */
     if (emptyRetryState) {
       emptyRetryState.count++;
       if (emptyRetryState.count < EMPTY_RESPONSE_MAX_RETRIES) {
@@ -1070,7 +1084,8 @@ export async function forwardToNvidia(
           const nextModel = options.resolveModel(exhaustedModels.slice());
           if (nextModel && !exhaustedModels.includes(nextModel)) {
             if (response.status !== 429) {
-              void captureUpstreamErrorForLog(response, body, activeModel);
+              // [DESLIGADO] captureUpstreamErrorForLog comentado — last_errors.json nao sera salvo.
+              // void captureUpstreamErrorForLog(response, body, activeModel);
             }
             const reason = response.status === 429
               ? 'todas as APIs em castigo 429'
@@ -1124,6 +1139,8 @@ export async function forwardToNvidia(
       if (sseError) {
         markApiUpstreamError({ apiNumber, status: sseError.status, message: sseError.message, requestStartedAt, model: activeModel, attempt, maxAttempts, timestamp: now() });
         markApiResponseCompleted({ apiNumber, requestStartedAt, attempt, maxAttempts, totalTokens: usageInfo?.total_tokens, promptTokens: usageInfo?.prompt_tokens, completionTokens: usageInfo?.completion_tokens, model: activeModel, timestamp: now() });
+        // [DESLIGADO] logSseUpstreamError comentado — last_errors.json nao sera salvo.
+        /*
         logSseUpstreamError({
           body,
           response,
@@ -1134,6 +1151,7 @@ export async function forwardToNvidia(
           sseError,
           requestStartedAt
         });
+        */
         if (sseError.status === 500 && http500State) http500State.count++;
 
         const sse500Failover = sseError.status === 500 && http500State && http500State.count >= MAX_500_RETRIES && options.resolveModel;
@@ -1169,6 +1187,8 @@ export async function forwardToNvidia(
         markApiResponseCompleted({ apiNumber, requestStartedAt, attempt, maxAttempts, totalTokens: usageInfo?.total_tokens, promptTokens: usageInfo?.prompt_tokens, completionTokens: usageInfo?.completion_tokens, model: activeModel, timestamp: now() });
 
         const emptyAttempt = emptyRetryState.count + 1;
+        // [DESLIGADO] logEmptyNvidiaResponse comentado — last_errors.json nao sera salvo.
+        /*
         logEmptyNvidiaResponse({
           body,
           response,
@@ -1180,6 +1200,7 @@ export async function forwardToNvidia(
           maxEmptyRetries: EMPTY_RESPONSE_MAX_RETRIES,
           requestStartedAt
         });
+        */
         emptyRetryState.count++;
         if (emptyRetryState.count < EMPTY_RESPONSE_MAX_RETRIES) {
           continue;
@@ -1343,7 +1364,8 @@ async function hedgeForward(
       markApiUpstreamError({ apiNumber: primaryApiNumber, status: response.status, message: response.statusText || `NVIDIA HTTP ${response.status}`, requestStartedAt, model: activeModel, attempt, maxAttempts, timestamp: now() });
       if (response.status === 429) markApiRateLimited({ apiNumber: primaryApiNumber, model: activeModel, retryAfterMs: parseRetryAfterMs(response), timestamp: now() });
       if (response.status !== 429) {
-        void captureUpstreamErrorForLog(response, body, activeModel);
+        // [DESLIGADO] captureUpstreamErrorForLog comentado — last_errors.json nao sera salvo.
+        // void captureUpstreamErrorForLog(response, body, activeModel);
       }
       markApiResponseCompleted({ apiNumber: primaryApiNumber, requestStartedAt, attempt, maxAttempts, timestamp: now() });
       await reader.cancel().catch(() => {});
@@ -1571,7 +1593,8 @@ async function doFetchWithModel(
       markApiUpstreamError({ apiNumber, status: response.status, message: response.statusText || `NVIDIA HTTP ${response.status}`, requestStartedAt, model, attempt: 1, maxAttempts: 1, timestamp: Date.now() });
       if (response.status === 429) markApiRateLimited({ apiNumber, model, retryAfterMs: parseRetryAfterMs(response), timestamp: Date.now() });
       if (response.status !== 429) {
-        void captureUpstreamErrorForLog(response, body, model);
+        // [DESLIGADO] captureUpstreamErrorForLog comentado — last_errors.json nao sera salvo.
+        // void captureUpstreamErrorForLog(response, body, model);
       }
       markApiResponseCompleted({ apiNumber, requestStartedAt, attempt: 1, maxAttempts: 1, timestamp: Date.now() });
       await reader.cancel().catch(() => {});

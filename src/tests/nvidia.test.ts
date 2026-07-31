@@ -490,20 +490,9 @@ test('NVIDIA forwarding returns empty response with 200 after 3 empty retries', 
     const content = body.choices?.[0]?.message?.content;
     assert.equal(content, '');
 
-    const errors = await readLastErrorsEventually(errorDirectory, new RegExp('Tentativa vazia 3/3'));
-    assert.equal(errors.entries[0].errorStatus, 204);
-    assert.match(errors.entries[0].errorMessage, /Tentativa vazia 3\/3/);
-    const debug = JSON.parse(errors.entries[0].errorBody) as any;
-    assert.equal(debug.reason, 'empty_completion');
-    assert.equal(debug.empty_attempt, 3);
-    assert.equal(debug.max_empty_retries, 3);
-    assert.equal(debug.upstream.status, 200);
-    assert.equal(debug.upstream.headers['x-request-id'], 'empty-request-3');
-    assert.equal(debug.sse.event_count, 1);
-    assert.equal(debug.sse.events[0].finish_reason, 'stop');
-    assert.deepEqual(debug.sse.events[0].delta_keys, ['role']);
-    assert.equal(debug.aggregate.usage.total_tokens, 3);
-    assert.ok(debug.raw.preview.includes('chatcmpl-empty'));
+    // [DESLIGADO] last_errors.json nao e mais salvo — confirma que o arquivo nao existe.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    assert.equal(existsSync(path.join(errorDirectory, 'last_errors.json')), false);
   } finally {
     setLastErrorDirectory('');
   }
@@ -542,16 +531,9 @@ test('NVIDIA forwarding treats SSE error payloads inside HTTP 200 as retryable u
     assert.equal(calls, 3);
     assert.equal(body.choices[0].message.content, 'real');
 
-    const errors = await readLastErrorsEventually(errorDirectory, new RegExp('erro SSE HTTP 500'));
-    assert.equal(errors.entries[0].errorStatus, 500);
-    const debug = JSON.parse(errors.entries[0].errorBody) as any;
-    assert.equal(debug.reason, 'sse_upstream_error');
-    assert.equal(debug.sse_error.message, 'Internal server error');
-    assert.equal(debug.sse_error.type, 'internal_server_error');
-    assert.equal(debug.sse_error.code, 500);
-    assert.equal(debug.upstream.status, 200);
-    assert.equal(debug.upstream.headers['nvcf-reqid'], 'sse-error-2');
-    assert.ok(debug.raw.preview.includes('internal_server_error'));
+    // [DESLIGADO] last_errors.json nao e mais salvo — confirma que o arquivo nao existe.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    assert.equal(existsSync(path.join(errorDirectory, 'last_errors.json')), false);
   } finally {
     setLastErrorDirectory('');
   }
