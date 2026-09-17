@@ -8,6 +8,8 @@ window.agentBridgeModels = [
   { key: 'flash', label: 'Gemini 3.5 Flash', model: 'gemini-3.5-flash' },
   { key: 'lite', label: 'Gemini 3.5 Flash-Lite', model: 'gemini-3.5-flash-lite' },
   { key: 'lite', label: 'Gemini 3.1 Flash-Lite', model: 'gemini-3.1-flash-lite' },
+  { key: '', label: 'Gemma 4 26B MoE', model: 'gemma-4-26b-a4b-it' },
+  { key: '', label: 'Gemma 4 31B', model: 'gemma-4-31b-it' },
   { key: 'pro', label: 'Gemini 3.1 Pro (preview)', model: 'gemini-3.1-pro-preview' }
 ];
 

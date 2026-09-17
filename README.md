@@ -31,7 +31,7 @@ from OpenAI-compatible clients, Codex CLI, and Claude Code.
   503 "high demand" is retried like a 500, then fails over to the next model.
   Upstream error logs now show Gemini's own message instead of `Bad Request`.
 - **Daily budget per key and model:** free tier is Flash 5 RPM / 20 RPD, Flash-Lite
-  15 RPM / 500 RPD and Pro 0 RPD per project, per model (set `AGENTBRIDGE_ALT_PAID_TIER=1`
+  15 RPM / 500 RPD, Gemma 4 30 RPM / 16K TPM / 14.4K RPD, and Pro 0 RPD per project, per model (set `AGENTBRIDGE_ALT_PAID_TIER=1`
   to disable these local limits on billed keys). The gateway counts every request (failed ones
   too) per key per model, skips a key for a model once it reaches the daily limit (resets
   at midnight Pacific), and fails over to the next model in auto mode. Counts persist in

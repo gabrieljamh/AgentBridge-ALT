@@ -44,6 +44,10 @@ export const DEFAULT_MODEL_CATALOG: ModelCatalogEntry[] = [
   { label: 'Gemini 3.5 Flash', model: 'gemini-3.5-flash', icon: 'flash' },
   { label: 'Gemini 3.5 Flash-Lite', model: 'gemini-3.5-flash-lite', icon: 'lite' },
   { label: 'Gemini 3.1 Flash-Lite', model: 'gemini-3.1-flash-lite', icon: 'lite' },
+  // Gemma 4: 14.4K requests/dia, mas so 16K tokens/minuto -> bom para RP com contexto
+  // de ~8-10K, inutil para agentes. Quiz ao vivo: 26B MoE 4/6 em 1,8 s; 31B 3/6.
+  { label: 'Gemma 4 26B MoE', model: 'gemma-4-26b-a4b-it', icon: '' },
+  { label: 'Gemma 4 31B', model: 'gemma-4-31b-it', icon: '' },
   { label: 'Gemini 3.1 Pro (preview)', model: 'gemini-3.1-pro-preview', icon: 'pro' }
 ];
 
@@ -64,6 +68,8 @@ export const PAID_TIER = /^(1|true|yes)$/i.test(String(process.env.AGENTBRIDGE_A
 export function modelLimitsFor(model: string): ModelLimits | undefined {
   if (PAID_TIER) return undefined;
   const id = String(model || '').toLowerCase();
+  // Gemma 4 no free tier: 30 RPM / 16K TPM / 14.4K RPD (painel do AI Studio, 17/09/2026).
+  if (/^(models\/)?gemma-4-/.test(id)) return { rpm: 30, rpd: 14_400 };
   if (!/^(models\/)?gemini-/.test(id)) return undefined;
   if (/-pro\b/.test(id) && !/(image|tts)/.test(id)) return { rpm: 0, rpd: 0 };
   if (/flash-lite/.test(id)) return { rpm: 15, rpd: 500 };

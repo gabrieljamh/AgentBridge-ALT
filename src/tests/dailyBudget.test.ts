@@ -27,6 +27,7 @@ test('daily: family limits (Flash 5/20, Flash-Lite 15/500, others none)', () => 
   assert.deepEqual(modelLimitsFor('gemini-3.6-flash'), { rpm: 5, rpd: 20 });
   assert.deepEqual(modelLimitsFor('gemini-3.1-flash-lite'), { rpm: 15, rpd: 500 });
   assert.deepEqual(modelLimitsFor('gemini-3.1-pro-preview'), { rpm: 0, rpd: 0 });
+  assert.deepEqual(modelLimitsFor('gemma-4-26b-a4b-it'), { rpm: 30, rpd: 14_400 });
   assert.equal(modelLimitsFor('moonshotai/kimi-k2.6'), undefined);
 });
 
