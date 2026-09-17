@@ -3,12 +3,12 @@
 // "Selecionar modelo" (toggle de redirecionamento + botao de teste).
 window.agentBridgeModels = [
   { key: 'flash', label: 'Gemini 3.8 Flash', model: 'gemini-3.8-flash' },
-  { key: 'pro', label: 'Gemini 3.1 Pro (preview)', model: 'gemini-3.1-pro-preview' },
   { key: 'flash', label: 'Gemini 3.7 Flash', model: 'gemini-3.7-flash' },
   { key: 'flash', label: 'Gemini 3.6 Flash', model: 'gemini-3.6-flash' },
   { key: 'flash', label: 'Gemini 3.5 Flash', model: 'gemini-3.5-flash' },
   { key: 'lite', label: 'Gemini 3.5 Flash-Lite', model: 'gemini-3.5-flash-lite' },
-  { key: 'lite', label: 'Gemini 3.1 Flash-Lite', model: 'gemini-3.1-flash-lite' }
+  { key: 'lite', label: 'Gemini 3.1 Flash-Lite', model: 'gemini-3.1-flash-lite' },
+  { key: 'pro', label: 'Gemini 3.1 Pro (preview)', model: 'gemini-3.1-pro-preview' }
 ];
 
 // Icones genericos por familia (nao sao logos oficiais): raio = Flash,

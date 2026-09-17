@@ -15,6 +15,31 @@
 
 import { RATE_LIMIT_MINUTE_PENALTY_MS } from '../config.ts';
 
+// Modelo com cota 0 no tier da chave: fora do rodizio por 24h.
+export const UNAVAILABLE_MODEL_PENALTY_MS = 24 * 60 * 60_000;
+
+// Ultimo motivo de 429 por modelo, para explicar ao cliente/UI quando todas as
+// chaves estao de castigo (senao so aparece "tente mais tarde").
+const lastRateLimitByModel = new Map<string, RateLimitInfo>();
+
+export function rememberRateLimit(model: unknown, info: RateLimitInfo) {
+  if (typeof model === 'string' && model) lastRateLimitByModel.set(model, info);
+}
+
+export function describeRestingModel(model: unknown): string | undefined {
+  if (typeof model !== 'string') return undefined;
+  const info = lastRateLimitByModel.get(model);
+  if (!info) return undefined;
+  const label = info.scope === 'unavailable'
+    ? 'modelo sem cota neste tier (limit: 0)'
+    : info.scope === 'daily'
+      ? 'cota diaria esgotada (reinicia a meia-noite do Pacifico)'
+      : info.scope === 'minute'
+        ? 'limite por minuto'
+        : 'limite de requisicoes';
+  return info.message ? `${label} - ${info.message}` : label;
+}
+
 export const SKIP_THOUGHT_SIGNATURE = 'skip_thought_signature_validator';
 const SIGNATURE_CACHE_MAX = 5_000;
 const signatureCache = new Map<string, unknown>();
@@ -96,7 +121,8 @@ export function withThoughtSignatures(messages: unknown, model?: unknown): unkno
 // ---------------------------------------------------------------------------
 
 export type RateLimitInfo = {
-  scope: 'daily' | 'minute' | 'unknown';
+  // 'unavailable': a cota do modelo e 0 neste tier (ex.: modelos Pro preview no free tier).
+  scope: 'unavailable' | 'daily' | 'minute' | 'unknown';
   penaltyMs: number;
   quotaId?: string;
   message?: string;
@@ -157,6 +183,13 @@ export function classifyRateLimitBody(raw: unknown, now = Date.now()): RateLimit
   }
 
   const haystack = [...quotaIds, message || ''].join(' ');
+  // "Quota exceeded for metric: ..., limit: 0" => o modelo nao existe neste tier;
+  // nao adianta tentar de novo em 1 minuto nem a meia-noite.
+  const zeroLimit = /\blimit:\s*0\b/i.test(message || '')
+    || details.some((d) => Array.isArray(d?.violations) && d.violations.some((v: any) => String(v?.quotaValue ?? '') === '0'));
+  if (zeroLimit) {
+    return { scope: 'unavailable', penaltyMs: UNAVAILABLE_MODEL_PENALTY_MS, quotaId: quotaIds[0], message };
+  }
   if (/per[_\s-]?day|PerDay|daily/i.test(haystack)) {
     return { scope: 'daily', penaltyMs: msUntilNextPacificMidnight(now), quotaId: quotaIds[0], message };
   }

@@ -304,3 +304,26 @@ test('503 high demand persistente troca de modelo no modo automatico', async () 
   assert.equal(response.status, 200);
   assert.deepEqual(models, ['gemini-3.8-flash', 'gemini-3.8-flash', 'gemini-3.8-flash', 'gemini-3.5-flash-lite']);
 });
+
+test('429 com limit: 0 marca o modelo como indisponivel no tier por 24h', () => {
+  const body = JSON.stringify([{ error: { code: 429, status: 'RESOURCE_EXHAUSTED',
+    message: 'You exceeded your current quota. Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-3.1-pro',
+    details: [{ '@type': 'type.googleapis.com/google.rpc.RetryInfo', retryDelay: '30s' }] } }]);
+  const info = classifyRateLimitBody(body);
+  assert.equal(info.scope, 'unavailable');
+  assert.equal(info.penaltyMs, 24 * 60 * 60_000);
+});
+
+test('quando todas as chaves estao de castigo, a resposta explica o motivo do Gemini', async () => {
+  clearRuntimeConfig();
+  setRuntimeConfig({ apiKeys: ['AIza-pro'] });
+  const body = JSON.stringify([{ error: { code: 429, status: 'RESOURCE_EXHAUSTED', message: 'Quota exceeded for metric: x, limit: 0, model: gemini-3.1-pro' } }]);
+  const fakeFetch: typeof fetch = async () => new Response(body, { status: 429, headers: { 'content-type': 'application/json' } });
+  const request = { model: 'gemini-3.1-pro-preview', messages: [{ role: 'user', content: 'oi' }] };
+  await forwardToNvidia(request, fakeFetch, 0);
+  const second = await forwardToNvidia(request, fakeFetch, 0);
+  assert.equal(second.status, 429);
+  const payload = await second.json();
+  assert.match(payload.error.message, /sem cota neste tier/);
+  assert.match(payload.error.message, /limit: 0/);
+});
