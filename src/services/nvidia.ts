@@ -112,6 +112,10 @@ type ToolCallDraft = {
 
 const EMPTY_RESPONSE_MAX_RETRIES = 3;
 const MAX_500_RETRIES = 3;
+// Gemini "high demand" (503 UNAVAILABLE): e do modelo, nao da chave. Tenta de novo
+// no MESMO modelo com backoff (mesmo com uma chave so) antes de trocar de modelo.
+const HIGH_DEMAND_BACKOFF_MS = [1_500, 4_000, 8_000];
+const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 const DEFAULT_STREAM_KEEP_ALIVE_MS = 5_000;
 const SSE_BUFFER_MAX_LENGTH = 65_536;
 const SSE_BUFFER_TAIL_LENGTH = 16_384;
@@ -1126,6 +1130,13 @@ export async function forwardToNvidia(
             http500State.count = 0;
             continue;
           }
+        }
+        if (keyFailure === 'high_demand' && http500State.count < MAX_500_RETRIES) {
+          const waitMs = HIGH_DEMAND_BACKOFF_MS[Math.min(http500State.count - 1, HIGH_DEMAND_BACKOFF_MS.length - 1)];
+          markApiDelayWaiting({ apiNumber, delayMs: waitMs, attempt, timestamp: now() });
+          await (rateLimitOptions.sleep || defaultSleep)(waitMs);
+          attempt = 0; // nao consome tentativas de chave: o problema nao e a chave
+          continue;
         }
         if (retryableServerError && http500State.count < MAX_500_RETRIES && attempt < maxAttempts) {
           continue;

@@ -261,3 +261,45 @@ test('chave invalida sai do rodizio em todos os modelos e a request tenta outra 
   await forwardToNvidia({ model: 'gemini-2.5-flash', messages: [{ role: 'user', content: 'oi' }] }, fakeFetch, 0);
   assert.deepEqual(seen.map((row) => row.auth), ['Bearer AIza-good']);
 });
+
+const highDemandBody = JSON.stringify([{ error: { code: 503, status: 'UNAVAILABLE', message: 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.' } }]);
+const okSse = 'data: {"choices":[{"delta":{"content":"ok"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n';
+
+test('503 high demand com uma chave so: backoff e nova tentativa no mesmo modelo', async () => {
+  clearRuntimeConfig();
+  setRuntimeConfig({ apiKeys: ['AIza-single'] });
+  let calls = 0;
+  const sleeps: number[] = [];
+  const fakeFetch: typeof fetch = async () => {
+    calls++;
+    if (calls <= 2) return new Response(highDemandBody, { status: 503, headers: { 'content-type': 'application/json' } });
+    return new Response(okSse, { headers: { 'content-type': 'text/event-stream' } });
+  };
+  const response = await forwardToNvidia(
+    { model: 'gemini-3.8-flash', messages: [{ role: 'user', content: 'oi' }] },
+    fakeFetch, 0, { sleep: async (ms) => { sleeps.push(ms); } }
+  );
+  assert.equal(response.status, 200);
+  assert.equal(calls, 3);
+  assert.deepEqual(sleeps, [1_500, 4_000]);
+  assert.equal(getRuntimeStatus().apiUsage[0].resting, false, 'alta demanda nao castiga a chave');
+});
+
+test('503 high demand persistente troca de modelo no modo automatico', async () => {
+  clearRuntimeConfig();
+  setRuntimeConfig({ apiKeys: ['AIza-single'] });
+  const models: string[] = [];
+  const fakeFetch: typeof fetch = async (_url, init) => {
+    const model = JSON.parse(String(init?.body)).model;
+    models.push(model);
+    if (model === 'gemini-3.8-flash') return new Response(highDemandBody, { status: 503, headers: { 'content-type': 'application/json' } });
+    return new Response(okSse, { headers: { 'content-type': 'text/event-stream' } });
+  };
+  const response = await forwardToNvidia(
+    { model: 'gemini-3.8-flash', messages: [{ role: 'user', content: 'oi' }] },
+    fakeFetch, 0, { sleep: async () => {} },
+    { resolveModel: (exhausted) => (exhausted.includes('gemini-3.5-flash-lite') ? null : 'gemini-3.5-flash-lite') }
+  );
+  assert.equal(response.status, 200);
+  assert.deepEqual(models, ['gemini-3.8-flash', 'gemini-3.8-flash', 'gemini-3.8-flash', 'gemini-3.5-flash-lite']);
+});
