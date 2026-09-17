@@ -50,6 +50,7 @@ import {
   setSelectedModel
 } from '../services/runtime.ts';
 import { forwardToNvidia } from '../services/nvidia.ts';
+import { extractProviderMessage } from '../services/gemini.ts';
 import { getLocale, getMessages, initLocale, setLocale, t } from '../i18n/index.ts';
 import type { Locale } from '../i18n/index.ts';
 
@@ -587,14 +588,19 @@ async function testModel(model: unknown) {
       fetch
     );
     const elapsedMs = Date.now() - startedAt;
-    const payload: any = await response.json().catch(() => ({}));
+    const rawText = await response.text().catch(() => '');
+    let payload: any = {};
+    try { payload = JSON.parse(rawText); } catch { payload = {}; }
     if (!response.ok) {
+      // Gemini devolve o erro como array ([{ error: {...} }]); mostra a mensagem
+      // real (ex.: "NOT_FOUND: models/x is not found") em vez de so "HTTP 404".
+      const message = extractProviderMessage(rawText);
       return {
         ok: false,
         model: normalizedModel,
         elapsedMs,
         status: response.status,
-        error: payload?.error?.message || `HTTP ${response.status}`
+        error: message ? `HTTP ${response.status} - ${message}` : `HTTP ${response.status}`
       };
     }
     const reply = payload?.choices?.[0]?.message?.content || '';
