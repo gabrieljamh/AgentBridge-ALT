@@ -3,7 +3,8 @@ import type { ServerType } from '@hono/node-server';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { app as honoApp } from '../index.ts';
-import { TEST_PROMPT } from '../desktop/testPrompt.ts';
+import { runModelQuiz } from '../services/modelQuiz.ts';
+import { extractProviderMessage } from '../services/gemini.ts';
 import {
   APP_NAME,
   APP_VERSION,
@@ -799,7 +800,7 @@ async function editModelScreen(model: string): Promise<void> {
   persistToDisk();
 }
 
-// Testa um modelo enviando o TEST_PROMPT por toda a rotacao e medindo o tempo.
+// Testa um modelo com o quiz rapido (src/services/modelQuiz.ts) e mostra o placar.
 async function testModelScreen(model: string): Promise<void> {
   if (!unlockedConfig.apiKeys.length) {
     await pause({ lines: sectionHeader(t('models.test'), '').concat('  ' + c.amber(t('models.registerFirst'))) });
@@ -820,24 +821,26 @@ async function testModelScreen(model: string): Promise<void> {
 
   let resultLines: string[];
   try {
-    const response = await forwardToNvidia(
-      { model, messages: [{ role: 'user', content: TEST_PROMPT }], stream: false },
-      fetch
-    );
-    const elapsed = Date.now() - startedAt;
-    const payload: any = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      resultLines = ['  ' + c.red(t('models.testFail', { status: String(response.status), elapsed: formatElapsed(elapsed), message: payload?.error?.message || t('models.testNoDetail') }))];
+    const outcome = await runModelQuiz(model, (body) => forwardToNvidia(body, fetch), extractProviderMessage);
+    if (!outcome.ok) {
+      resultLines = ['  ' + c.red(t('models.testFailed', { message: outcome.error }))];
     } else {
-      const reply = String(payload?.choices?.[0]?.message?.content || '').trim();
-      const tokens = Number(payload?.usage?.total_tokens) || 0;
+      const color = outcome.score === outcome.total ? c.green : outcome.score >= outcome.total - 1 ? c.amber : c.red;
       resultLines = [
-        '  ' + c.green(t('models.testSuccess', { elapsed: formatElapsed(elapsed), tokens: tokens ? t('models.testTokens', { count: String(tokens) }) : '' })),
+        '  ' + color(t('models.testScore', {
+          score: String(outcome.score),
+          total: String(outcome.total),
+          elapsed: formatElapsed(outcome.elapsedMs),
+          tokens: outcome.totalTokens ? t('models.testTokens', { count: String(outcome.totalTokens) }) : ''
+        })),
         ''
       ];
-      const snippet = reply.split('\n').slice(0, 18);
-      for (const line of snippet) resultLines.push('  ' + c.faint('│ ') + c.text(line));
-      if (reply.split('\n').length > 18) resultLines.push('  ' + c.faint('│ ...'));
+      for (const check of outcome.checks) {
+        const label = t('quiz.' + check.id);
+        resultLines.push('  ' + (check.pass
+          ? c.green('✓ ') + c.text(label)
+          : c.red('✗ ') + c.text(label) + c.faint(' - ' + t('quiz.gotExpected', { got: check.got || '∅', expected: check.expected }))));
+      }
     }
   } catch (error) {
     resultLines = ['  ' + c.red(t('models.testFailed', { message: error instanceof Error ? error.message : String(error) }))];

@@ -198,6 +198,10 @@ pre { min-height: 170px; margin: 0; padding: 16px 92px 16px 16px; overflow: auto
 .model-result.pending { color: var(--amber); }
 .model-result.ok { color: var(--green); }
 .model-result.fail { color: var(--red); }
+.model-result.partial { color: var(--amber); }
+.model-quiz-checks { margin: 10px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; font: 11px/1.5 "Cascadia Code",Consolas,monospace; }
+.model-quiz-checks li.pass { color: var(--green); }
+.model-quiz-checks li.miss { color: var(--red); }
 .model-result-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .model-copy-reply { padding: 6px 10px; border-color: var(--line); background: var(--panel-strong); color: var(--muted); font-size: 10px; font-weight: 700; }
 .model-copy-reply.copied { color: var(--green); border-color: var(--accent); }

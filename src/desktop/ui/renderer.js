@@ -476,7 +476,8 @@ function wireTestButton(test, result, model) {
       const outcome = await bridge.testModel(model);
       clearInterval(liveTimer);
       if (outcome && outcome.ok) {
-        result.className = 'model-result ok';
+        const perfect = outcome.score === outcome.total;
+        result.className = 'model-result ' + (perfect ? 'ok' : outcome.score >= outcome.total - 1 ? 'partial' : 'fail');
         result.replaceChildren();
         const head = document.createElement('div');
         head.className = 'model-result-head';
@@ -484,7 +485,12 @@ function wireTestButton(test, result, model) {
         const tokenInfo = Number(outcome.totalTokens) > 0
           ? t('electron.testTokens', { count: String(outcome.totalTokens) })
           : '';
-        status.textContent = t('electron.testSuccess', { elapsed: formatElapsed(outcome.elapsedMs), tokens: tokenInfo });
+        status.textContent = t('electron.testScore', {
+          score: String(outcome.score),
+          total: String(outcome.total),
+          elapsed: formatElapsed(outcome.elapsedMs),
+          tokens: tokenInfo
+        });
         head.append(status);
         if (outcome.reply) {
           const copyReply = document.createElement('button');
@@ -503,12 +509,17 @@ function wireTestButton(test, result, model) {
           head.append(copyReply);
         }
         result.append(head);
-        if (outcome.reply) {
-          const reply = document.createElement('pre');
-          reply.className = 'model-result-reply';
-          reply.textContent = outcome.reply;
-          result.append(reply);
+        const list = document.createElement('ul');
+        list.className = 'model-quiz-checks';
+        for (const check of outcome.checks || []) {
+          const item = document.createElement('li');
+          item.className = check.pass ? 'pass' : 'miss';
+          const label = t('quiz.' + check.id);
+          item.textContent = (check.pass ? '✓ ' : '✗ ') + label
+            + (check.pass ? '' : ' - ' + t('quiz.gotExpected', { got: check.got || '∅', expected: check.expected }));
+          list.append(item);
         }
+        result.append(list);
       } else {
         result.className = 'model-result fail';
         const elapsed = outcome && outcome.elapsedMs ? ' (' + formatElapsed(outcome.elapsedMs) + ')' : '';

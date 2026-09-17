@@ -5,7 +5,7 @@ import path from 'node:path';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { app as honoApp } from '../index.ts';
-import { TEST_PROMPT } from './testPrompt.ts';
+import { runModelQuiz } from '../services/modelQuiz.ts';
 import {
   APP_NAME,
   APP_VERSION,
@@ -567,62 +567,14 @@ async function updateModels(payload: any) {
   return getStatus();
 }
 
-// Envia um prompt complexo (gerar uma calculadora em Python com interface) ao
-// modelo informado, passando por toda a rotacao de APIs, e mede quanto tempo a
-// Gemini levou para responder. Usado pelo botao "Testar Modelo" no modal. NAO usa
-// o redirecionamento: testa exatamente o modelo do card.
+// Botao "Testar": roda o quiz rapido (src/services/modelQuiz.ts) no modelo do card,
+// passando por toda a rotacao de chaves. NAO usa o redirecionamento.
 async function testModel(model: unknown) {
   const normalizedModel = String(model || '').trim();
   if (!normalizedModel) throw new Error('Modelo invalido.');
   if (!sessionPassword) throw new Error(t('error.unlockFirst'));
   if (!unlockedConfig.apiKeys.length) throw new Error(t('error.cadastreFirst'));
-
-  const startedAt = Date.now();
-  try {
-    const response = await forwardToNvidia(
-      {
-        model: normalizedModel,
-        messages: [{ role: 'user', content: TEST_PROMPT }],
-        stream: false
-      },
-      fetch
-    );
-    const elapsedMs = Date.now() - startedAt;
-    const rawText = await response.text().catch(() => '');
-    let payload: any = {};
-    try { payload = JSON.parse(rawText); } catch { payload = {}; }
-    if (!response.ok) {
-      // Gemini devolve o erro como array ([{ error: {...} }]); mostra a mensagem
-      // real (ex.: "NOT_FOUND: models/x is not found") em vez de so "HTTP 404".
-      const message = extractProviderMessage(rawText);
-      return {
-        ok: false,
-        model: normalizedModel,
-        elapsedMs,
-        status: response.status,
-        error: message ? `HTTP ${response.status} - ${message}` : `HTTP ${response.status}`
-      };
-    }
-    const reply = payload?.choices?.[0]?.message?.content || '';
-    const usage = payload?.usage || {};
-    return {
-      ok: true,
-      model: normalizedModel,
-      elapsedMs,
-      status: response.status,
-      reply: String(reply).trim(),
-      totalTokens: Number(usage.total_tokens) || 0,
-      promptTokens: Number(usage.prompt_tokens) || 0,
-      completionTokens: Number(usage.completion_tokens) || 0
-    };
-  } catch (error: any) {
-    return {
-      ok: false,
-      model: normalizedModel,
-      elapsedMs: Date.now() - startedAt,
-      error: error?.message || String(error)
-    };
-  }
+  return runModelQuiz(normalizedModel, (body) => forwardToNvidia(body, fetch), extractProviderMessage);
 }
 
 async function saveDelay(value: unknown) {
