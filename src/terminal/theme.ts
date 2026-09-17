@@ -21,10 +21,10 @@ function style(code: number, reset: number) {
     COLOR_ENABLED ? `${ESC}${code}m${text}${ESC}${reset}m` : text;
 }
 
-// Paleta NVIDIA (espelha styles.css do desktop).
+// Paleta AgentBridge ALT (espelha styles.css do desktop).
 export const c = {
-  accent: rgb(118, 185, 0), // #76b900 verde NVIDIA
-  accentStrong: rgb(139, 209, 0), // #8bd100
+  accent: rgb(91, 140, 255), // #5b8cff azul ALT
+  accentStrong: rgb(122, 162, 255), // #7aa2ff
   green: rgb(67, 212, 158), // #43d49e
   red: rgb(255, 107, 122), // #ff6b7a
   amber: rgb(242, 185, 93), // #f2b95d
@@ -32,7 +32,7 @@ export const c = {
   muted: rgb(142, 152, 168), // #8e98a8
   faint: rgb(95, 105, 120),
   white: rgb(255, 255, 255),
-  bgAccent: bgRgb(118, 185, 0),
+  bgAccent: bgRgb(91, 140, 255),
   bgPanel: bgRgb(23, 27, 36),
   bold: style(1, 22),
   dim: style(2, 22),
@@ -166,7 +166,7 @@ export function bar(value: number, max: number, width: number): string {
 // Logo em ASCII art para a tela de abertura.
 // Fonte "slant" (figlet) para a palavra AgentBridge -- 6 linhas.
 // As larguras visiveis sao normalizadas via padEndVisible para que o
-// centerVisible as alinhe perfeitamente. Degrede verde NVIDIA: topo em
+// centerVisible as alinhe perfeitamente. Degrede azul: topo em
 // accentStrong, meio em accent, base em accent -- da profundidade.
 export function logo(): string[] {
   const a = c.accent;

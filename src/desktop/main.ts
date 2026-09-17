@@ -425,7 +425,7 @@ async function persistConfig(input: any) {
   return getStatus();
 }
 
-// Define qual modelo NVIDIA o proxy usa para TODAS as chamadas. Trocar o modelo
+// Define qual modelo Gemini o proxy usa para TODAS as chamadas. Trocar o modelo
 // e a unica forma de "desligar" o anterior: o redirecionamento esta sempre ativo.
 // Persistido em texto puro junto com a config.
 async function selectModel(model: unknown) {
@@ -568,7 +568,7 @@ async function updateModels(payload: any) {
 
 // Envia um prompt complexo (gerar uma calculadora em Python com interface) ao
 // modelo informado, passando por toda a rotacao de APIs, e mede quanto tempo a
-// NVIDIA levou para responder. Usado pelo botao "Testar Modelo" no modal. NAO usa
+// Gemini levou para responder. Usado pelo botao "Testar Modelo" no modal. NAO usa
 // o redirecionamento: testa exatamente o modelo do card.
 async function testModel(model: unknown) {
   const normalizedModel = String(model || '').trim();

@@ -15,7 +15,7 @@ export const DEFAULT_MODEL = 'gemini-3.8-flash';
 
 // Um item do catalogo de modelos selecionaveis. `model` e o id real enviado ao
 // endpoint OpenAI-compativel do Gemini; `label` e o nome amigavel exibido; `icon`
-// e a chave do SVG embutido (vazio = placeholder com a primeira letra).
+// e a chave do SVG embutido (flash, pro, lite; vazio = placeholder com a primeira letra).
 // `inputPrice` e `outputPrice` (USD por 1M tokens) sao opcionais e so alimentam o
 // calculo de economia. Deixe vazio para modelos usados apenas no free tier.
 export type ModelCatalogEntry = {
@@ -35,13 +35,13 @@ export const DEFAULT_DEACTIVATED_MODELS: ModelCatalogEntry[] = [];
 // Catalogo padrao (ids conferidos em ai.google.dev/gemini-api/docs/models, set/2026).
 // Editavel pelo usuario no app.
 export const DEFAULT_MODEL_CATALOG: ModelCatalogEntry[] = [
-  { label: 'Gemini 3.8 Flash', model: 'gemini-3.8-flash', icon: '' },
-  { label: 'Gemini 3.1 Pro (preview)', model: 'gemini-3.1-pro-preview', icon: '' },
-  { label: 'Gemini 3.7 Flash', model: 'gemini-3.7-flash', icon: '' },
-  { label: 'Gemini 3.5 Flash', model: 'gemini-3.5-flash', icon: '' },
-  { label: 'Gemini 3.5 Flash-Lite', model: 'gemini-3.5-flash-lite', icon: '' },
-  { label: 'Gemini 2.5 Pro', model: 'gemini-2.5-pro', icon: '' },
-  { label: 'Gemini 2.5 Flash', model: 'gemini-2.5-flash', icon: '' }
+  { label: 'Gemini 3.8 Flash', model: 'gemini-3.8-flash', icon: 'flash' },
+  { label: 'Gemini 3.1 Pro (preview)', model: 'gemini-3.1-pro-preview', icon: 'pro' },
+  { label: 'Gemini 3.7 Flash', model: 'gemini-3.7-flash', icon: 'flash' },
+  { label: 'Gemini 3.5 Flash', model: 'gemini-3.5-flash', icon: 'flash' },
+  { label: 'Gemini 3.5 Flash-Lite', model: 'gemini-3.5-flash-lite', icon: 'lite' },
+  { label: 'Gemini 2.5 Pro', model: 'gemini-2.5-pro', icon: 'pro' },
+  { label: 'Gemini 2.5 Flash', model: 'gemini-2.5-flash', icon: 'flash' }
 ];
 
 // Ordem de prioridade padrao do failover automatico de modelo (ids "provider/modelo").

@@ -10,9 +10,9 @@ const previewStatus = {
   apiUsage: [],
   usageLog: [],
   port: 3001,
-  selectedModel: 'deepseek-ai/deepseek-v4-pro',
+  selectedModel: 'gemini-3.8-flash',
   autoToggle: false,
-  activeModel: 'deepseek-ai/deepseek-v4-pro',
+  activeModel: 'gemini-3.8-flash',
   modelCatalog: Array.isArray(window.agentBridgeModels)
     ? window.agentBridgeModels.map((item) => ({ label: item.label, model: item.model, icon: item.key }))
     : [],
@@ -202,7 +202,7 @@ function formatCountdown(milliseconds) {
 }
 
 // Achata o apiUsage em uma linha por (API, modelo): a mesma API aparece varias
-// vezes se estiver de castigo em mais de um modelo (ex.: 429 no Kimi e no Deepseek).
+// vezes se estiver de castigo em mais de um modelo (ex.: 429 no 3.8 Flash e no 2.5 Pro).
 function penaltyRows(status) {
   const rows = [];
   (Array.isArray(status.apiUsage) ? status.apiUsage : []).forEach((item) => {
@@ -338,7 +338,7 @@ function renderStatus(status) {
     const active = headlineModelOf(status);
     elements.selectedModelLabel.textContent = status.autoToggle
       ? `${active} · auto`
-      : (active || 'deepseek-ai/deepseek-v4-pro');
+      : (active || 'gemini-3.8-flash');
   }
   if (elements.selectModelButton) elements.selectModelButton.disabled = !status.unlocked;
   renderModelModal(status);
@@ -400,7 +400,7 @@ function activeModelOf(status) {
 
 // Modelo exibido no cabecalho "REDIRECIONAMENTO DE MODELO". No modo automatico
 // mostramos o PRIMEIRO da lista de prioridade (o alvo que o proxy tentara primeiro),
-// e nao o ultimo realmente usado. Assim o cabecalho nao "volta" para o deepseek ao
+// e nao o ultimo realmente usado. Assim o cabecalho nao "volta" para o modelo padrao ao
 // reiniciar o app, quando o backend ainda nao definiu activeModel por nenhuma
 // chamada. No modo manual segue o modelo fixo escolhido.
 function headlineModelOf(status) {
