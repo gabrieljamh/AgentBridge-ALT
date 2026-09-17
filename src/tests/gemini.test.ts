@@ -319,7 +319,7 @@ test('quando todas as chaves estao de castigo, a resposta explica o motivo do Ge
   setRuntimeConfig({ apiKeys: ['AIza-pro'] });
   const body = JSON.stringify([{ error: { code: 429, status: 'RESOURCE_EXHAUSTED', message: 'Quota exceeded for metric: x, limit: 0, model: gemini-3.1-pro' } }]);
   const fakeFetch: typeof fetch = async () => new Response(body, { status: 429, headers: { 'content-type': 'application/json' } });
-  const request = { model: 'gemini-3.1-pro-preview', messages: [{ role: 'user', content: 'oi' }] };
+  const request = { model: 'gemini-exp-unlisted', messages: [{ role: 'user', content: 'oi' }] };
   await forwardToNvidia(request, fakeFetch, 0);
   const second = await forwardToNvidia(request, fakeFetch, 0);
   assert.equal(second.status, 429);

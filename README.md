@@ -30,8 +30,9 @@ from OpenAI-compatible clients, Codex CLI, and Claude Code.
   rotation for **all models** for 24 h and retry on another key — no model failover.
   503 "high demand" is retried like a 500, then fails over to the next model.
   Upstream error logs now show Gemini's own message instead of `Bad Request`.
-- **Daily budget per key and model:** free tier is Flash 5 RPM / 20 RPD and Flash-Lite
-  15 RPM / 500 RPD per project, per model. The gateway counts every request (failed ones
+- **Daily budget per key and model:** free tier is Flash 5 RPM / 20 RPD, Flash-Lite
+  15 RPM / 500 RPD and Pro 0 RPD per project, per model (set `AGENTBRIDGE_ALT_PAID_TIER=1`
+  to disable these local limits on billed keys). The gateway counts every request (failed ones
   too) per key per model, skips a key for a model once it reaches the daily limit (resets
   at midnight Pacific), and fails over to the next model in auto mode. Counts persist in
   `daily_usage.json` (key hashes only). The **Usage & penalties** screen shows used/limit

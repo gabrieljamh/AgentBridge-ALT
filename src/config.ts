@@ -52,13 +52,20 @@ export const DEFAULT_MODEL_CATALOG: ModelCatalogEntry[] = [
 // quando todas as chaves do atual estao de castigo (429).
 // Limites do free tier por modelo, POR PROJETO (= por chave), conferidos no painel
 // do AI Studio em 17/09/2026: familia Flash = 5 RPM / 20 RPD; Flash-Lite = 15 RPM /
-// 500 RPD (cada modelo da familia tem o proprio limite). Modelos fora dessas familias
-// ficam sem limite local (o 429 do Gemini continua valendo).
+// 500 RPD (cada modelo da familia tem o proprio limite); familia Pro = 0 RPD (sem
+// cota gratuita). Modelos fora dessas familias ficam sem limite local (o 429 do
+// Gemini continua valendo).
+// Quem tem billing (tier pago) pode desligar os limites locais com
+// AGENTBRIDGE_ALT_PAID_TIER=1.
 export type ModelLimits = { rpm: number; rpd: number };
 
+export const PAID_TIER = /^(1|true|yes)$/i.test(String(process.env.AGENTBRIDGE_ALT_PAID_TIER || ''));
+
 export function modelLimitsFor(model: string): ModelLimits | undefined {
+  if (PAID_TIER) return undefined;
   const id = String(model || '').toLowerCase();
   if (!/^(models\/)?gemini-/.test(id)) return undefined;
+  if (/-pro\b/.test(id) && !/(image|tts)/.test(id)) return { rpm: 0, rpd: 0 };
   if (/flash-lite/.test(id)) return { rpm: 15, rpd: 500 };
   if (/flash/.test(id) && !/(image|tts|live|transcribe)/.test(id)) return { rpm: 5, rpd: 20 };
   return undefined;

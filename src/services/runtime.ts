@@ -1106,9 +1106,11 @@ export async function acquireApiKey(options: AcquireApiKeyOptions = {}) {
       const error = new AllKeysRestingError(Math.max(1, Math.ceil(shortestPenaltyWaitMs)));
       if (dailyExhaustedKeys === apiKeyStates.length) {
         const limits = modelLimitsFor(key);
-        error.message = `Limite diario do modelo ${key} esgotado em todas as ${apiKeyStates.length} chave(s)`
-          + (limits ? ` (${limits.rpd}/${limits.rpd} por chave)` : '')
-          + '. Zera a meia-noite do Pacifico.';
+        error.message = limits && limits.rpd === 0
+          ? `O modelo ${key} nao tem cota no free tier (0 requests/dia). Use um modelo Flash/Flash-Lite ou uma chave com billing (AGENTBRIDGE_ALT_PAID_TIER=1).`
+          : `Limite diario do modelo ${key} esgotado em todas as ${apiKeyStates.length} chave(s)`
+            + (limits ? ` (${limits.rpd}/${limits.rpd} por chave)` : '')
+            + '. Zera a meia-noite do Pacifico.';
         error.dailyBudget = true;
       }
       throw error;
