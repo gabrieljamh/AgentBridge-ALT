@@ -81,3 +81,16 @@ test('quiz: arguments as a JSON string inside a text tool call are unwrapped', (
   const grade = gradeQuizCompletion({ choices: [{ message: { content } }] });
   assert.equal(grade.score, 5);
 });
+
+test('quiz: gives up after the timeout and aborts the request', async () => {
+  let aborted = false;
+  const outcome = await runModelQuiz('slow/model', (_body, signal) => new Promise<Response>((_resolve, reject) => {
+    signal.addEventListener('abort', () => { aborted = true; reject(new Error('aborted')); });
+  }), extractProviderMessage, 50);
+  assert.equal(outcome.ok, false);
+  if (!outcome.ok) {
+    assert.equal(outcome.timedOut, true);
+    assert.match(outcome.error, /No response in 0 s|No response in/);
+  }
+  assert.equal(aborted, true);
+});

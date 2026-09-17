@@ -5,7 +5,7 @@ import path from 'node:path';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { app as honoApp } from '../index.ts';
-import { runModelQuiz } from '../services/modelQuiz.ts';
+import { fetchWithQuizSignal, runModelQuiz } from '../services/modelQuiz.ts';
 import { autoSaveDailyUsage, loadDailyUsage } from '../services/dailyUsageStore.ts';
 import {
   APP_NAME,
@@ -596,7 +596,7 @@ async function testModel(model: unknown) {
   if (!normalizedModel) throw new Error('Modelo invalido.');
   if (!sessionPassword) throw new Error(t('error.unlockFirst'));
   if (!unlockedConfig.apiKeys.length) throw new Error(t('error.cadastreFirst'));
-  return runModelQuiz(normalizedModel, (body) => forwardToNvidia(body, fetch), extractProviderMessage);
+  return runModelQuiz(normalizedModel, (body, signal) => forwardToNvidia(body, fetchWithQuizSignal(signal)), extractProviderMessage);
 }
 
 async function saveDelay(value: unknown) {

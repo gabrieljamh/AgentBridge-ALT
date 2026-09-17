@@ -3,7 +3,7 @@ import type { ServerType } from '@hono/node-server';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { app as honoApp } from '../index.ts';
-import { runModelQuiz } from '../services/modelQuiz.ts';
+import { fetchWithQuizSignal, runModelQuiz } from '../services/modelQuiz.ts';
 import { autoSaveDailyUsage, loadDailyUsage } from '../services/dailyUsageStore.ts';
 import { extractProviderMessage } from '../services/gemini.ts';
 import {
@@ -840,9 +840,11 @@ async function testModelScreen(model: string): Promise<void> {
 
   let resultLines: string[];
   try {
-    const outcome = await runModelQuiz(model, (body) => forwardToNvidia(body, fetch), extractProviderMessage);
+    const outcome = await runModelQuiz(model, (body, signal) => forwardToNvidia(body, fetchWithQuizSignal(signal)), extractProviderMessage);
     if (!outcome.ok) {
-      resultLines = ['  ' + c.red(t('models.testFailed', { message: outcome.error }))];
+      resultLines = ['  ' + c.red(outcome.timedOut
+        ? t('quiz.timeout', { seconds: String(Math.round(outcome.elapsedMs / 1000)) })
+        : t('models.testFailed', { message: outcome.error }))];
     } else {
       const color = outcome.score === outcome.total ? c.green : outcome.score >= outcome.total - 1 ? c.amber : c.red;
       resultLines = [

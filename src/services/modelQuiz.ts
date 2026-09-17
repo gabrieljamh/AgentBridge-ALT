@@ -146,22 +146,57 @@ export function gradeQuizCompletion(completion: any): QuizGrade {
 
 export type QuizOutcome =
   | ({ ok: true; model: string; elapsedMs: number; status: number; totalTokens: number; reply: string } & QuizGrade)
-  | { ok: false; model: string; elapsedMs: number; status?: number; error: string };
+  | { ok: false; model: string; elapsedMs: number; status?: number; error: string; timedOut?: boolean };
 
 // Roda o quiz usando o invocador informado (forwardToNvidia no app). Se o endpoint
 // recusar tool_choice "required" (HTTP 400 citando tool_choice), repete com "auto".
+// Teste rapido: se o modelo nao responder em QUIZ_TIMEOUT_MS, desiste e cancela a
+// chamada (antes esperava o timeout do proxy, 600 s).
+export const QUIZ_TIMEOUT_MS = 120_000;
+
+export type QuizInvoker = (body: Record<string, unknown>, signal: AbortSignal) => Promise<Response>;
+
+// Junta o signal do quiz ao signal que o proxy ja usa em cada fetch.
+export function fetchWithQuizSignal(signal: AbortSignal): typeof fetch {
+  return (input, init) => fetch(input, {
+    ...init,
+    signal: init?.signal ? AbortSignal.any([init.signal, signal]) : signal
+  });
+}
+
 export async function runModelQuiz(
   model: string,
-  invoke: (body: Record<string, unknown>) => Promise<Response>,
-  describeError: (text: string) => string | undefined
+  invoke: QuizInvoker,
+  describeError: (text: string) => string | undefined,
+  timeoutMs = QUIZ_TIMEOUT_MS
 ): Promise<QuizOutcome> {
   const startedAt = Date.now();
+  const controller = new AbortController();
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<'timeout'>((resolve) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      resolve('timeout');
+    }, timeoutMs);
+  });
+  const timedOut = (): QuizOutcome => ({
+    ok: false,
+    model,
+    elapsedMs: Date.now() - startedAt,
+    timedOut: true,
+    error: `No response in ${Math.round(timeoutMs / 1000)} s`
+  });
+  const withTimeout = async <T,>(work: Promise<T>): Promise<T | 'timeout'> => Promise.race([work, timeout]);
   try {
-    let response = await invoke(buildQuizRequest(model, 'required'));
-    let text = await response.text().catch(() => '');
+    let response = await withTimeout(invoke(buildQuizRequest(model, 'required'), controller.signal));
+    if (response === 'timeout') return timedOut();
+    let text = await withTimeout(response.text().catch(() => ''));
+    if (text === 'timeout') return timedOut();
     if (response.status === 400 && /tool_choice|function_calling_config|mode/i.test(text)) {
-      response = await invoke(buildQuizRequest(model, 'auto'));
-      text = await response.text().catch(() => '');
+      response = await withTimeout(invoke(buildQuizRequest(model, 'auto'), controller.signal));
+      if (response === 'timeout') return timedOut();
+      text = await withTimeout(response.text().catch(() => ''));
+      if (text === 'timeout') return timedOut();
     }
     const elapsedMs = Date.now() - startedAt;
     if (!response.ok) {
@@ -181,6 +216,9 @@ export async function runModelQuiz(
       ...grade
     };
   } catch (error: any) {
+    if (controller.signal.aborted) return timedOut();
     return { ok: false, model, elapsedMs: Date.now() - startedAt, error: error?.message || String(error) };
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }

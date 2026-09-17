@@ -587,7 +587,9 @@ function wireTestButton(test, result, model) {
       } else {
         result.className = 'model-result fail';
         const elapsed = outcome && outcome.elapsedMs ? ' (' + formatElapsed(outcome.elapsedMs) + ')' : '';
-        result.textContent = t('electron.testFailed', { elapsed, error: (outcome && outcome.error) || t('log.noDetail') });
+        result.textContent = outcome && outcome.timedOut
+          ? t('quiz.timeout', { seconds: String(Math.round((outcome.elapsedMs || 0) / 1000)) })
+          : t('electron.testFailed', { elapsed, error: (outcome && outcome.error) || t('log.noDetail') });
       }
     } catch (error) {
       clearInterval(liveTimer);
