@@ -33,15 +33,17 @@ export const DEFAULT_MODEL_PRICES: Record<string, { input: number; output: numbe
 export const DEFAULT_DEACTIVATED_MODELS: ModelCatalogEntry[] = [];
 
 // Catalogo padrao (ids conferidos em ai.google.dev/gemini-api/docs/models, set/2026).
+// Gemini 2.5 Pro/Flash foram removidos: a API responde 404 "no longer available to
+// new users" (confirmado ao vivo em 16/09/2026).
 // Editavel pelo usuario no app.
 export const DEFAULT_MODEL_CATALOG: ModelCatalogEntry[] = [
   { label: 'Gemini 3.8 Flash', model: 'gemini-3.8-flash', icon: 'flash' },
   { label: 'Gemini 3.1 Pro (preview)', model: 'gemini-3.1-pro-preview', icon: 'pro' },
   { label: 'Gemini 3.7 Flash', model: 'gemini-3.7-flash', icon: 'flash' },
+  { label: 'Gemini 3.6 Flash', model: 'gemini-3.6-flash', icon: 'flash' },
   { label: 'Gemini 3.5 Flash', model: 'gemini-3.5-flash', icon: 'flash' },
   { label: 'Gemini 3.5 Flash-Lite', model: 'gemini-3.5-flash-lite', icon: 'lite' },
-  { label: 'Gemini 2.5 Pro', model: 'gemini-2.5-pro', icon: 'pro' },
-  { label: 'Gemini 2.5 Flash', model: 'gemini-2.5-flash', icon: 'flash' }
+  { label: 'Gemini 3.1 Flash-Lite', model: 'gemini-3.1-flash-lite', icon: 'lite' }
 ];
 
 // Ordem de prioridade padrao do failover automatico de modelo (ids "provider/modelo").
