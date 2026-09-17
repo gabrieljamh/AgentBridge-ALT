@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   FIRST_RESPONSE_TIMEOUT_MS,
   HEDGE_SLOW_THRESHOLD_MS,
@@ -998,6 +999,26 @@ async function readFirstChunk(
 // ---------------------------------------------------------------------------
 // forwardToNvidia — ponto de entrada principal
 // ---------------------------------------------------------------------------
+// Impressao digital estavel de uma conversa: system/developer + primeira mensagem do
+// usuario. Nao muda a cada turno (o historico cresce no fim), entao todos os turnos
+// da mesma conversa caem na mesma chave.
+function contentText(content: unknown): string {
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    return content.map((part: any) => (typeof part?.text === 'string' ? part.text : '')).join('\n');
+  }
+  return '';
+}
+
+export function conversationFingerprint(body: Record<string, unknown>): string | undefined {
+  const messages = Array.isArray(body.messages) ? body.messages as any[] : [];
+  const system = messages.filter((m) => m?.role === 'system' || m?.role === 'developer').map((m) => contentText(m.content)).join('\n');
+  const firstUser = messages.find((m) => m?.role === 'user');
+  const seed = `${system}\u0000${firstUser ? contentText(firstUser.content) : ''}`;
+  if (seed === '\u0000') return undefined;
+  return createHash('sha256').update(seed).digest('hex').slice(0, 16);
+}
+
 export async function forwardToNvidia(
   body: Record<string, unknown>,
   fetchImpl: NvidiaFetch = fetch,
@@ -1006,6 +1027,11 @@ export async function forwardToNvidia(
   options: ForwardOptions = {}
 ) {
   const clientWantsStream = Boolean(body.stream);
+  // Chave presa por conversa (ver AcquireApiKeyOptions.affinity).
+  if (!rateLimitOptions.affinity) {
+    const affinity = conversationFingerprint(body);
+    if (affinity) rateLimitOptions = { ...rateLimitOptions, affinity };
+  }
   const timeoutMs = options.firstResponseTimeoutMs ?? FIRST_RESPONSE_TIMEOUT_MS;
   const now = rateLimitOptions.now || Date.now;
   const onResponseText = options.onResponseText;

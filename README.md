@@ -42,6 +42,10 @@ from OpenAI-compatible clients, Codex CLI, and Claude Code.
   `reasoning_effort`. "Off" uses the lowest level each model accepts (3.8 Flash: low;
   other Gemini 3.x and Gemma: minimal). If Gemini rejects the value, the request is
   retried once without the override. Saved in the vault config.
+- **Key per conversation:** each conversation (fingerprint of system prompt + first user
+  message) sticks to one key, keeping provider-side prompt caching; new conversations go
+  to the least-used key, so traffic is spread without switching keys mid-chat. A 429 or
+  exhausted daily budget moves that conversation to another key, where it sticks.
 - **Side-by-side with the original AgentBridge:** nothing is shared.
   - Vault / keys / penalties / token usage: `Documents\AgentBridge-ALT\` (override with `AGENTBRIDGE_ALT_DATA_DIR`)
   - Electron app data (`%APPDATA%`): `AgentBridge ALT`; installer appId `com.gabrieljamh.agentbridge.alt`

@@ -54,6 +54,11 @@ export type AcquireApiKeyOptions = {
   sleep?: (milliseconds: number) => Promise<void>;
   // Modelo da request: o castigo e checado/aplicado por modelo.
   model?: string;
+  // Impressao digital da conversa (system + primeira mensagem). Com ela, cada
+  // conversa fica presa a UMA chave (preserva cache de prompt e contexto no
+  // provedor) e conversas diferentes sao espalhadas pelas chaves menos usadas
+  // (evita que uma chave so leve todo o trafego e seja desacelerada).
+  affinity?: string;
 };
 
 export type ApiKeyUsageEvent = {
@@ -143,6 +148,10 @@ let activeModel = DEFAULT_MODEL;
 // aleatoriamente (para nao comecar sempre na chave 0 e cansa-la). Depois gruda
 // nela ate receber 429 -- quando isso acontece, sorteia outra elegivel.
 let modelCursors = new Map<string, number>();
+// (conversa|modelo) -> indice da chave. Limitado e expira para nao crescer sem fim.
+const AFFINITY_MAX = 2_000;
+const AFFINITY_TTL_MS = 3 * 60 * 60_000;
+let affinityCursors = new Map<string, { index: number; apiKey: string; lastUsed: number }>();
 let nextSendAt = 0;
 // Estado sticky do hedge: quando o backup vence porque o primario foi lento,
 // guardamos o modelo backup aqui e quantas requests ainda faltam para voltar
@@ -332,11 +341,13 @@ export function setRuntimeConfig(config: {
     );
   }
   modelCursors = new Map();
+  affinityCursors = new Map();
 }
 
 export function clearRuntimeConfig() {
   apiKeyStates = [];
   modelCursors = new Map();
+  affinityCursors = new Map();
   nextSendAt = 0;
   requestDelayMs = REQUEST_DELAY_MS;
   selectedModel = DEFAULT_MODEL;
@@ -1079,6 +1090,39 @@ export class AllKeysRestingError extends Error {
   }
 }
 
+// Conversa ja tem chave e ela segue elegivel -> mesma chave. Senao escolhe a chave
+// elegivel com MENOS requests no ultimo minuto (empate = sorteio) e grava.
+function pickAffinityKey(affinityKey: string, eligibleIndices: number[], timestamp: number) {
+  const saved = affinityCursors.get(affinityKey);
+  if (saved && eligibleIndices.includes(saved.index) && apiKeyStates[saved.index]?.apiKey === saved.apiKey
+    && timestamp - saved.lastUsed < AFFINITY_TTL_MS) {
+    saved.lastUsed = timestamp;
+    affinityCursors.delete(affinityKey);
+    affinityCursors.set(affinityKey, saved);
+    return saved.index;
+  }
+  let best: number[] = [];
+  let bestLoad = Number.POSITIVE_INFINITY;
+  for (const index of eligibleIndices) {
+    const load = activeRequests(apiKeyStates[index], timestamp);
+    if (load < bestLoad) {
+      bestLoad = load;
+      best = [index];
+    } else if (load === bestLoad) {
+      best.push(index);
+    }
+  }
+  const index = best.length === 1 ? best[0] : best[Math.floor(Math.random() * best.length)];
+  affinityCursors.delete(affinityKey);
+  affinityCursors.set(affinityKey, { index, apiKey: apiKeyStates[index].apiKey, lastUsed: timestamp });
+  while (affinityCursors.size > AFFINITY_MAX) {
+    const oldest = affinityCursors.keys().next().value;
+    if (oldest === undefined) break;
+    affinityCursors.delete(oldest);
+  }
+  return index;
+}
+
 export async function acquireApiKey(options: AcquireApiKeyOptions = {}) {
   const now = options.now || Date.now;
   const sleep = options.sleep || defaultSleep;
@@ -1141,7 +1185,9 @@ export async function acquireApiKey(options: AcquireApiKeyOptions = {}) {
     // ela sem mudar -- soh troca quando recebe 429 (markApiRateLimited).
     const saved = modelCursors.get(key);
     let chosenIndex = -1;
-    if (saved !== undefined && eligibleIndices.includes(saved)) {
+    if (options.affinity) {
+      chosenIndex = pickAffinityKey(`${options.affinity}|${key}`, eligibleIndices, timestamp);
+    } else if (saved !== undefined && eligibleIndices.includes(saved)) {
       chosenIndex = saved;
     } else {
       chosenIndex = eligibleIndices.length === 1
