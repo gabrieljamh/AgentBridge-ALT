@@ -69,7 +69,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'dashboard.logTitle': 'LIVE LOG',
     'dashboard.waitingRequest': 'Waiting for the first request...',
     'dashboard.gatewayReady': 'Gateway ready for Codex CLI, Claude Code and OpenAI/Anthropic clients.',
-    'dashboard.cadastreApis': 'Register your NVIDIA APIs (key A) to start the gateway.',
+    'dashboard.cadastreApis': 'Register your Gemini APIs (key A) to start the gateway.',
     'dashboard.pressToStart': 'Press S to start the gateway.',
     'dashboard.gatewayError': '{message}',
     'dashboard.portInUse': 'Port {port} is already in use.',
@@ -93,7 +93,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'hotkey.deactivated': 'desativados',
 
     /* ───── APIs screen ───── */
-    'apis.title': 'NVIDIA APIs',
+    'apis.title': 'Gemini APIs',
     'apis.subtitle': 'Keys are encrypted (AES-256-GCM) in {path}',
     'apis.add': '+ Add API',
     'apis.save': 'Save and encrypt',
@@ -104,18 +104,18 @@ export const messages: Record<Locale, I18nMessages> = {
     'apis.nKeys': '{count} key(s)',
     'apis.hint': 'Enter on an API to edit/remove.',
     'apis.addTitle': 'Add API',
-    'apis.addPrompt': 'Paste the nvapi-... key generated at build.nvidia.com',
-    'apis.apiKeyLabel': 'NVIDIA API key',
-    'apis.mustStartWith': 'The key must start with nvapi-',
+    'apis.addPrompt': 'Paste the AIza... key generated at aistudio.google.com/apikey (one key per project)',
+    'apis.apiKeyLabel': 'Gemini API key',
+    'apis.mustStartWith': 'The key looks invalid (empty or contains spaces)',
     'apis.saved': '{count} key(s) encrypted successfully.',
     'apis.api': 'API',
     'apis.replace': 'Replace key',
     'apis.remove': 'Remove',
     'apis.replaceTitle': 'Replace API',
-    'apis.newKeyLabel': 'New NVIDIA key',
+    'apis.newKeyLabel': 'New Gemini key',
 
     /* ───── Models screen ───── */
-    'models.title': 'NVIDIA Models',
+    'models.title': 'Gemini Models',
     'models.autoSubtitle': 'Auto mode ON: the proxy follows priority order and switches on 429.',
     'models.manualSubtitle': 'Manual: every call goes to the selected model.',
     'models.autoToggle': 'Automatic model switching',
@@ -176,7 +176,7 @@ export const messages: Record<Locale, I18nMessages> = {
 
     /* ───── Delay screen ───── */
     'delay.title': 'Extra delay (ms)',
-    'delay.subtitle': 'Extra spacing before each NVIDIA call (0-600000).',
+    'delay.subtitle': 'Extra spacing before each Gemini call (0-600000).',
     'delay.label': 'Delay in ms',
     'delay.invalid': 'Enter a value between 0 and 600000 ms.',
 
@@ -245,7 +245,7 @@ export const messages: Record<Locale, I18nMessages> = {
     /* ───── Error / generic ───── */
     'error.generic': 'Error',
     'error.unlockFirst': 'Unlock the vault first.',
-    'error.cadastreFirst': 'Register at least one NVIDIA API.',
+    'error.cadastreFirst': 'Register at least one Gemini API.',
     'error.cannotBeEmpty': 'Cannot be empty.',
     'error.unsupportedConfig': 'Unsupported config version.',
     'error.portInUse': 'Port {port} is already in use.',
@@ -301,7 +301,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'log.apiStarted': 'API {number} started responding in {elapsed}{model}',
     'log.apiCompleted': 'API {number} responded in {elapsed}{tokens}',
     'log.apiTokens': ', {count} tokens',
-    'log.upstreamError': 'NVIDIA HTTP {status} error on API {number}{model}: {message}',
+    'log.upstreamError': 'Gemini HTTP {status} error on API {number}{model}: {message}',
     'log.streamCancelled': 'Stream cancelled on API {number}: {message}',
     'log.modelSwitch': 'Auto model switch{reason} to {model}',
     'log.apiError': 'Error on API {number}: {message}',
@@ -313,15 +313,15 @@ export const messages: Record<Locale, I18nMessages> = {
     'log.modelPrefix': ' · model {model}',
 
     /* ───── Terminal integration export ───── */
-    'export.title': 'AgentBridge NVIDIA - integration ({url})',
+    'export.title': 'AgentBridge ALT - integration ({url})',
     'export.localKey': 'Local key: {key}',
     'export.codexSection': '=== Codex CLI (~/.codex/config.toml) ===',
     'export.claudeSectionBash': '=== Claude Code (bash / zsh) ===',
     'export.claudeSectionPwsh': '=== Claude Code (PowerShell) ===',
     'export.endpointsSection': '=== Endpoints ===',
 
-    /* ───── NVIDIA header ───── */
-    'header.subtitle': 'NVIDIA inference gateway · a local API for your coding agents',
+    /* ───── Gemini header ───── */
+    'header.subtitle': 'Gemini (AI Studio) gateway · a local API for your coding agents',
 
     /* ───── Navigation ───── */
     'nav.upDown': '↑/↓ navigate · Enter select · Esc go back',
@@ -330,12 +330,12 @@ export const messages: Record<Locale, I18nMessages> = {
     'nav.pressAnyKeyStart': 'Press any key to start...',
 
     /* ───── Electron UI ───── */
-    'electron.brand.description': 'NVIDIA inference gateway',
+    'electron.brand.description': 'Gemini (AI Studio) gateway',
     'electron.hero.kicker': 'CODING AGENTS',
     'electron.hero.title': 'A local API for your coding agents.',
     'electron.hero.subtitle': 'Compatible with OpenAI Responses, Chat Completions and Anthropic Messages.',
     'electron.provider.active': 'Active provider',
-    'electron.provider.nvidia': 'NVIDIA',
+    'electron.provider.nvidia': 'Gemini',
     'electron.provider.modelByClient': 'Model defined by client',
     'electron.vaultCard': 'API vault',
     'electron.gatewayCard': 'Gateway',
@@ -365,7 +365,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'electron.passwordNeverSaved': 'The password is never saved',
     'electron.gatewayReady': 'Gateway ready for Codex CLI, Claude Code and custom clients.',
     'electron.enterPasswordHint': 'Enter the password to load the encrypted APIs.',
-    'electron.bothApisHint': 'Register your NVIDIA APIs to start the gateway.',
+    'electron.bothApisHint': 'Register your Gemini APIs to start the gateway.',
     'electron.apisUnlocked': 'APIs are only unlocked for this session.',
     'electron.gatewayFailure': 'Gateway failure',
     'electron.unlockModal': 'LOCAL VAULT',
@@ -381,7 +381,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'electron.localKeyDesc': 'This is the key that Codex, Claude Code and your clients need to send to use the proxy. Set your own so you don\'t depend on the default.',
     'electron.localKeyLabel': 'Local key',
     'electron.saveLocalKey': 'Save local key',
-    'electron.configModal': 'NVIDIA API KEYS',
+    'electron.configModal': 'Gemini API KEYS',
     'electron.configureRotation': 'Configure rotation',
     'electron.keysEncrypted': 'Keys are encrypted before being written to JSON.',
     'electron.addAnotherApi': '+ Add another API',
@@ -395,7 +395,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'electron.penalizedApisTitle': 'APIs under penalty',
     'electron.penaltyDesc': 'Keys that received HTTP 429 are out of rotation for 1 hour. The counter shows how long until each one returns.',
     'electron.noPenalty': 'No API under penalty right now.',
-    'electron.modelModal': 'NVIDIA MODELS',
+    'electron.modelModal': 'Gemini MODELS',
     'electron.selectModelTitle': 'Select model',
     'electron.autoToggleLabel': 'Automatic model switching',
     'electron.autoToggleHintOn': 'When on, the proxy chooses the model by itself following the priority order and switches model if all APIs are under penalty (429).',
@@ -505,7 +505,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'dashboard.logTitle': 'LOG AO VIVO',
     'dashboard.waitingRequest': 'Aguardando a primeira requisicao...',
     'dashboard.gatewayReady': 'Gateway pronto para Codex CLI, Claude Code e clientes OpenAI/Anthropic.',
-    'dashboard.cadastreApis': 'Cadastre suas APIs NVIDIA (tecla A) para iniciar o gateway.',
+    'dashboard.cadastreApis': 'Cadastre suas APIs Gemini (tecla A) para iniciar o gateway.',
     'dashboard.pressToStart': 'Pressione S para iniciar o gateway.',
     'dashboard.gatewayError': '{message}',
     'dashboard.portInUse': 'A porta {port} ja esta em uso.',
@@ -529,7 +529,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'hotkey.deactivated': 'desativados',
 
     /* ───── APIs screen ───── */
-    'apis.title': 'APIs NVIDIA',
+    'apis.title': 'APIs Gemini',
     'apis.subtitle': 'As chaves sao criptografadas (AES-256-GCM) em {path}',
     'apis.add': '+ Adicionar API',
     'apis.save': 'Salvar e criptografar',
@@ -540,18 +540,18 @@ export const messages: Record<Locale, I18nMessages> = {
     'apis.nKeys': '{count} chave(s)',
     'apis.hint': 'Enter numa API para editar/remover.',
     'apis.addTitle': 'Adicionar API',
-    'apis.addPrompt': 'Cole a chave nvapi-... gerada em build.nvidia.com',
-    'apis.apiKeyLabel': 'Chave da API NVIDIA',
-    'apis.mustStartWith': 'A chave deve comecar com nvapi-',
+    'apis.addPrompt': 'Cole a chave AIza... gerada em aistudio.google.com/apikey (uma chave por projeto)',
+    'apis.apiKeyLabel': 'Chave da API Gemini',
+    'apis.mustStartWith': 'A chave parece invalida (vazia ou com espacos)',
     'apis.saved': '{count} chave(s) criptografada(s) com sucesso.',
     'apis.api': 'API',
     'apis.replace': 'Substituir chave',
     'apis.remove': 'Remover',
     'apis.replaceTitle': 'Substituir API',
-    'apis.newKeyLabel': 'Nova chave NVIDIA',
+    'apis.newKeyLabel': 'Nova chave Gemini',
 
     /* ───── Models screen ───── */
-    'models.title': 'Modelos NVIDIA',
+    'models.title': 'Modelos Gemini',
     'models.autoSubtitle': 'Automatico ligado: o proxy segue a ordem de prioridade e troca em 429.',
     'models.manualSubtitle': 'Manual: toda chamada vai para o modelo selecionado.',
     'models.autoToggle': 'Alternancia automatica de modelo',
@@ -612,7 +612,7 @@ export const messages: Record<Locale, I18nMessages> = {
 
     /* ───── Delay screen ───── */
     'delay.title': 'Delay extra (ms)',
-    'delay.subtitle': 'Espacamento adicional antes de cada chamada NVIDIA (0-600000).',
+    'delay.subtitle': 'Espacamento adicional antes de cada chamada Gemini (0-600000).',
     'delay.label': 'Delay em ms',
     'delay.invalid': 'Digite um valor entre 0 e 600000 ms.',
 
@@ -681,7 +681,7 @@ export const messages: Record<Locale, I18nMessages> = {
     /* ───── Error / generic ───── */
     'error.generic': 'Erro',
     'error.unlockFirst': 'Desbloqueie o cofre primeiro.',
-    'error.cadastreFirst': 'Cadastre ao menos uma API NVIDIA.',
+    'error.cadastreFirst': 'Cadastre ao menos uma API Gemini.',
     'error.cannotBeEmpty': 'Nao pode ficar vazio.',
     'error.sentenceCouldNotExport': 'Nao foi possivel exportar as APIs.',
     'error.unsupportedConfig': 'Versao de configuracao nao suportada.',
@@ -722,7 +722,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'log.apiStarted': 'API {number} comecou a responder em {elapsed}{model}',
     'log.apiCompleted': 'API {number} respondeu em {elapsed}{tokens}',
     'log.apiTokens': ', {count} tokens',
-    'log.upstreamError': 'NVIDIA erro HTTP {status} na API {number}{model}: {message}',
+    'log.upstreamError': 'Gemini erro HTTP {status} na API {number}{model}: {message}',
     'log.streamCancelled': 'Stream cancelado na API {number}: {message}',
     'log.modelSwitch': 'Modelo trocado automaticamente{reason} para {model}',
     'log.apiError': 'Erro na API {number}: {message}',
@@ -734,15 +734,15 @@ export const messages: Record<Locale, I18nMessages> = {
     'log.modelPrefix': ' · modelo {model}',
 
     /* ───── Terminal integration export ───── */
-    'export.title': 'AgentBridge NVIDIA - integracao ({url})',
+    'export.title': 'AgentBridge ALT - integracao ({url})',
     'export.localKey': 'Chave local: {key}',
     'export.codexSection': '=== Codex CLI (~/.codex/config.toml) ===',
     'export.claudeSectionBash': '=== Claude Code (bash / zsh) ===',
     'export.claudeSectionPwsh': '=== Claude Code (PowerShell) ===',
     'export.endpointsSection': '=== Endpoints ===',
 
-    /* ───── NVIDIA header ───── */
-    'header.subtitle': 'NVIDIA inference gateway · uma API local para seus agentes de codigo',
+    /* ───── Gemini header ───── */
+    'header.subtitle': 'Gemini (AI Studio) gateway · uma API local para seus agentes de codigo',
 
     /* ───── Navigation ───── */
     'nav.upDown': '↑/↓ navegar · Enter selecionar · Esc voltar',
@@ -751,12 +751,12 @@ export const messages: Record<Locale, I18nMessages> = {
     'nav.pressAnyKeyStart': 'Pressione qualquer tecla para comecar...',
 
     /* ───── Electron UI ───── */
-    'electron.brand.description': 'NVIDIA inference gateway',
+    'electron.brand.description': 'Gemini (AI Studio) gateway',
     'electron.hero.kicker': 'CODING AGENTS',
     'electron.hero.title': 'Uma API local para seus agentes de codigo.',
     'electron.hero.subtitle': 'Compativel com OpenAI Responses, Chat Completions e Anthropic Messages.',
     'electron.provider.active': 'Provedor ativo',
-    'electron.provider.nvidia': 'NVIDIA',
+    'electron.provider.nvidia': 'Gemini',
     'electron.provider.modelByClient': 'Modelo definido pelo cliente',
     'electron.vaultCard': 'Cofre de APIs',
     'electron.gatewayCard': 'Gateway',
@@ -786,7 +786,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'electron.passwordNeverSaved': 'A senha nunca e salva',
     'electron.gatewayReady': 'Gateway pronto para Codex CLI, Claude Code e clientes proprios.',
     'electron.enterPasswordHint': 'Digite a senha para carregar as APIs criptografadas.',
-    'electron.bothApisHint': 'Cadastre suas APIs NVIDIA para iniciar o gateway.',
+    'electron.bothApisHint': 'Cadastre suas APIs Gemini para iniciar o gateway.',
     'electron.apisUnlocked': 'As APIs estao desbloqueadas apenas nesta sessao.',
     'electron.gatewayFailure': 'Falha no gateway',
     'electron.unlockModal': 'COFRE LOCAL',
@@ -802,7 +802,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'electron.localKeyDesc': 'Esta e a chave que o Codex, o Claude Code e seus clientes precisam enviar para usar o proxy. Defina a sua para nao depender da padrao.',
     'electron.localKeyLabel': 'Chave local',
     'electron.saveLocalKey': 'Salvar chave local',
-    'electron.configModal': 'NVIDIA API KEYS',
+    'electron.configModal': 'Gemini API KEYS',
     'electron.configureRotation': 'Configurar rotacao',
     'electron.keysEncrypted': 'As chaves sao criptografadas antes de serem gravadas no JSON.',
     'electron.addAnotherApi': '+ Adicionar outra API',
@@ -816,7 +816,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'electron.penalizedApisTitle': 'APIs em castigo',
     'electron.penaltyDesc': 'Chaves que receberam HTTP 429 ficam 1 hora fora do rodizio. O contador mostra quanto falta para cada uma voltar.',
     'electron.noPenalty': 'Nenhuma API de castigo agora.',
-    'electron.modelModal': 'MODELOS NVIDIA',
+    'electron.modelModal': 'MODELOS Gemini',
     'electron.selectModelTitle': 'Selecionar modelo',
     'electron.autoToggleLabel': 'Alternancia automatica de modelo',
     'electron.autoToggleHintOn': 'Quando ligada, o proxy escolhe sozinho o modelo seguindo a ordem de prioridade e troca de modelo se todas as APIs estiverem em castigo (429).',
@@ -926,7 +926,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'dashboard.logTitle': 'LIVE-LOG',
     'dashboard.waitingRequest': 'Warte auf erste Anfrage...',
     'dashboard.gatewayReady': 'Gateway bereit für Codex CLI, Claude Code und OpenAI/Anthropic-Clients.',
-    'dashboard.cadastreApis': 'Registrieren Sie Ihre NVIDIA-APIs (Taste A), um das Gateway zu starten.',
+    'dashboard.cadastreApis': 'Registrieren Sie Ihre Gemini-APIs (Taste A), um das Gateway zu starten.',
     'dashboard.pressToStart': 'Drücken Sie S, um das Gateway zu starten.',
     'dashboard.gatewayError': '{message}',
     'dashboard.portInUse': 'Port {port} wird bereits verwendet.',
@@ -950,7 +950,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'hotkey.deactivated': 'deaktiviert',
 
     /* ───── APIs screen ───── */
-    'apis.title': 'NVIDIA APIs',
+    'apis.title': 'Gemini APIs',
     'apis.subtitle': 'Schlüssel werden verschlüsselt (AES-256-GCM) in {path}',
     'apis.add': '+ API hinzufügen',
     'apis.save': 'Speichern und verschlüsseln',
@@ -961,18 +961,18 @@ export const messages: Record<Locale, I18nMessages> = {
     'apis.nKeys': '{count} Schlüssel',
     'apis.hint': 'Enter auf einer API zum Bearbeiten/Entfernen.',
     'apis.addTitle': 'API hinzufügen',
-    'apis.addPrompt': 'Fügen Sie den nvapi-...-Schlüssel von build.nvidia.com ein',
-    'apis.apiKeyLabel': 'NVIDIA API-Schlüssel',
-    'apis.mustStartWith': 'Der Schlüssel muss mit nvapi- beginnen',
+    'apis.addPrompt': 'Fügen Sie den AIza...-Schlüssel von aistudio.google.com/apikey (ein Schlüssel pro Projekt) ein',
+    'apis.apiKeyLabel': 'Gemini API-Schlüssel',
+    'apis.mustStartWith': 'Der Schlüssel scheint ungültig (leer oder mit Leerzeichen)',
     'apis.saved': '{count} Schlüssel erfolgreich verschlüsselt.',
     'apis.api': 'API',
     'apis.replace': 'Schlüssel ersetzen',
     'apis.remove': 'Entfernen',
     'apis.replaceTitle': 'API ersetzen',
-    'apis.newKeyLabel': 'Neuer NVIDIA-Schlüssel',
+    'apis.newKeyLabel': 'Neuer Gemini-Schlüssel',
 
     /* ───── Models screen ───── */
-    'models.title': 'NVIDIA Modelle',
+    'models.title': 'Gemini Modelle',
     'models.autoSubtitle': 'Automatik EIN: Der Proxy folgt der Prioritätsreihenfolge und wechselt bei 429.',
     'models.manualSubtitle': 'Manuell: Jeder Aufruf geht an das ausgewählte Modell.',
     'models.autoToggle': 'Automatische Modellumschaltung',
@@ -1033,7 +1033,7 @@ export const messages: Record<Locale, I18nMessages> = {
 
     /* ───── Delay screen ───── */
     'delay.title': 'Zusätzliche Verzögerung (ms)',
-    'delay.subtitle': 'Zusätzlicher Abstand vor jedem NVIDIA-Aufruf (0-600000).',
+    'delay.subtitle': 'Zusätzlicher Abstand vor jedem Gemini-Aufruf (0-600000).',
     'delay.label': 'Verzögerung in ms',
     'delay.invalid': 'Geben Sie einen Wert zwischen 0 und 600000 ms ein.',
 
@@ -1102,7 +1102,7 @@ export const messages: Record<Locale, I18nMessages> = {
     /* ───── Error / generic ───── */
     'error.generic': 'Fehler',
     'error.unlockFirst': 'Entsperren Sie zuerst den Tresor.',
-    'error.cadastreFirst': 'Registrieren Sie mindestens eine NVIDIA-API.',
+    'error.cadastreFirst': 'Registrieren Sie mindestens eine Gemini-API.',
     'error.cannotBeEmpty': 'Darf nicht leer sein.',
     'error.sentenceCouldNotExport': 'APIs konnten nicht exportiert werden.',
     'error.unsupportedConfig': 'Nicht unterstützte Konfigurationsversion.',
@@ -1143,7 +1143,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'log.apiStarted': 'API {number} begann zu antworten in {elapsed}{model}',
     'log.apiCompleted': 'API {number} antwortete in {elapsed}{tokens}',
     'log.apiTokens': ', {count} Token',
-    'log.upstreamError': 'NVIDIA HTTP {status} Fehler bei API {number}{model}: {message}',
+    'log.upstreamError': 'Gemini HTTP {status} Fehler bei API {number}{model}: {message}',
     'log.streamCancelled': 'Stream abgebrochen bei API {number}: {message}',
     'log.modelSwitch': 'Automatischer Modellwechsel{reason} zu {model}',
     'log.apiError': 'Fehler bei API {number}: {message}',
@@ -1155,15 +1155,15 @@ export const messages: Record<Locale, I18nMessages> = {
     'log.modelPrefix': ' · Modell {model}',
 
     /* ───── Terminal integration export ───── */
-    'export.title': 'AgentBridge NVIDIA - Integration ({url})',
+    'export.title': 'AgentBridge ALT - Integration ({url})',
     'export.localKey': 'Lokaler Schlüssel: {key}',
     'export.codexSection': '=== Codex CLI (~/.codex/config.toml) ===',
     'export.claudeSectionBash': '=== Claude Code (bash / zsh) ===',
     'export.claudeSectionPwsh': '=== Claude Code (PowerShell) ===',
     'export.endpointsSection': '=== Endpunkte ===',
 
-    /* ───── NVIDIA header ───── */
-    'header.subtitle': 'NVIDIA inference gateway · eine lokale API für Ihre Coding-Agenten',
+    /* ───── Gemini header ───── */
+    'header.subtitle': 'Gemini (AI Studio) gateway · eine lokale API für Ihre Coding-Agenten',
 
     /* ───── Navigation ───── */
     'nav.upDown': '↑/↓ navigieren · Enter auswählen · Esc zurück',
@@ -1172,12 +1172,12 @@ export const messages: Record<Locale, I18nMessages> = {
     'nav.pressAnyKeyStart': 'Beliebige Taste drücken zum Starten...',
 
     /* ───── Electron UI ───── */
-    'electron.brand.description': 'NVIDIA inference gateway',
+    'electron.brand.description': 'Gemini (AI Studio) gateway',
     'electron.hero.kicker': 'CODING AGENTS',
     'electron.hero.title': 'Eine lokale API für Ihre Coding-Agenten.',
     'electron.hero.subtitle': 'Kompatibel mit OpenAI Responses, Chat Completions und Anthropic Messages.',
     'electron.provider.active': 'Aktiver Anbieter',
-    'electron.provider.nvidia': 'NVIDIA',
+    'electron.provider.nvidia': 'Gemini',
     'electron.provider.modelByClient': 'Modell vom Client definiert',
     'electron.vaultCard': 'API-Tresor',
     'electron.gatewayCard': 'Gateway',
@@ -1207,7 +1207,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'electron.passwordNeverSaved': 'Das Passwort wird nie gespeichert',
     'electron.gatewayReady': 'Gateway bereit für Codex CLI, Claude Code und eigene Clients.',
     'electron.enterPasswordHint': 'Geben Sie das Passwort ein, um die verschlüsselten APIs zu laden.',
-    'electron.bothApisHint': 'Registrieren Sie Ihre NVIDIA-APIs, um das Gateway zu starten.',
+    'electron.bothApisHint': 'Registrieren Sie Ihre Gemini-APIs, um das Gateway zu starten.',
     'electron.apisUnlocked': 'APIs sind nur für diese Sitzung entsperrt.',
     'electron.gatewayFailure': 'Gateway-Fehler',
     'electron.unlockModal': 'LOKALER TRESOR',
@@ -1223,7 +1223,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'electron.localKeyDesc': 'Dies ist der Schlüssel, den Codex, Claude Code und Ihre Clients senden müssen, um den Proxy zu verwenden. Legen Sie Ihren eigenen fest, um nicht vom Standard abhängig zu sein.',
     'electron.localKeyLabel': 'Lokaler Schlüssel',
     'electron.saveLocalKey': 'Lokalen Schlüssel speichern',
-    'electron.configModal': 'NVIDIA API KEYS',
+    'electron.configModal': 'Gemini API KEYS',
     'electron.configureRotation': 'Rotation konfigurieren',
     'electron.keysEncrypted': 'Schlüssel werden vor dem Schreiben in JSON verschlüsselt.',
     'electron.addAnotherApi': '+ Weitere API hinzufügen',
@@ -1237,7 +1237,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'electron.penalizedApisTitle': 'Gesperrte APIs',
     'electron.penaltyDesc': 'Schlüssel, die HTTP 429 erhalten haben, sind für 1 Stunde aus der Rotation. Der Zähler zeigt, wie lange es noch dauert, bis jeder zurückkehrt.',
     'electron.noPenalty': 'Keine API derzeit gesperrt.',
-    'electron.modelModal': 'NVIDIA MODELLE',
+    'electron.modelModal': 'Gemini MODELLE',
     'electron.selectModelTitle': 'Modell auswählen',
     'electron.autoToggleLabel': 'Automatische Modellumschaltung',
     'electron.autoToggleHintOn': 'Wenn aktiviert, wählt der Proxy das Modell selbstständig nach Prioritätsreihenfolge und wechselt das Modell, wenn alle APIs gesperrt sind (429).',
@@ -1347,7 +1347,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'dashboard.logTitle': 'ЖУРНАЛ',
     'dashboard.waitingRequest': 'Ожидание первого запроса...',
     'dashboard.gatewayReady': 'Шлюз готов для Codex CLI, Claude Code и клиентов OpenAI/Anthropic.',
-    'dashboard.cadastreApis': 'Зарегистрируйте API NVIDIA (клавиша A), чтобы запустить шлюз.',
+    'dashboard.cadastreApis': 'Зарегистрируйте API Gemini (клавиша A), чтобы запустить шлюз.',
     'dashboard.pressToStart': 'Нажмите S, чтобы запустить шлюз.',
     'dashboard.gatewayError': '{message}',
     'dashboard.portInUse': 'Порт {port} уже используется.',
@@ -1371,7 +1371,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'hotkey.deactivated': 'отключён',
 
     /* ───── APIs screen ───── */
-    'apis.title': 'API NVIDIA',
+    'apis.title': 'API Gemini',
     'apis.subtitle': 'Ключи шифруются (AES-256-GCM) в {path}',
     'apis.add': '+ Добавить API',
     'apis.save': 'Сохранить и зашифровать',
@@ -1382,18 +1382,18 @@ export const messages: Record<Locale, I18nMessages> = {
     'apis.nKeys': '{count} ключ(ей)',
     'apis.hint': 'Enter на API для редактирования/удаления.',
     'apis.addTitle': 'Добавить API',
-    'apis.addPrompt': 'Вставьте ключ nvapi-..., созданный на build.nvidia.com',
-    'apis.apiKeyLabel': 'Ключ API NVIDIA',
-    'apis.mustStartWith': 'Ключ должен начинаться с nvapi-',
+    'apis.addPrompt': 'Вставьте ключ AIza..., созданный на aistudio.google.com/apikey (один ключ на проект)',
+    'apis.apiKeyLabel': 'Ключ API Gemini',
+    'apis.mustStartWith': 'Ключ выглядит недействительным (пустой или с пробелами)',
     'apis.saved': '{count} ключ(ей) успешно зашифровано.',
     'apis.api': 'API',
     'apis.replace': 'Заменить ключ',
     'apis.remove': 'Удалить',
     'apis.replaceTitle': 'Заменить API',
-    'apis.newKeyLabel': 'Новый ключ NVIDIA',
+    'apis.newKeyLabel': 'Новый ключ Gemini',
 
     /* ───── Models screen ───── */
-    'models.title': 'Модели NVIDIA',
+    'models.title': 'Модели Gemini',
     'models.autoSubtitle': 'Авто режим ВКЛ: прокси следует порядку приоритета и переключается при 429.',
     'models.manualSubtitle': 'Ручной: каждый вызов идёт на выбранную модель.',
     'models.autoToggle': 'Автоматическое переключение моделей',
@@ -1454,7 +1454,7 @@ export const messages: Record<Locale, I18nMessages> = {
 
     /* ───── Delay screen ───── */
     'delay.title': 'Дополнительная задержка (мс)',
-    'delay.subtitle': 'Дополнительный интервал перед каждым вызовом NVIDIA (0-600000).',
+    'delay.subtitle': 'Дополнительный интервал перед каждым вызовом Gemini (0-600000).',
     'delay.label': 'Задержка в мс',
     'delay.invalid': 'Введите значение от 0 до 600000 мс.',
 
@@ -1523,7 +1523,7 @@ export const messages: Record<Locale, I18nMessages> = {
     /* ───── Error / generic ───── */
     'error.generic': 'Ошибка',
     'error.unlockFirst': 'Сначала разблокируйте хранилище.',
-    'error.cadastreFirst': 'Зарегистрируйте хотя бы один API NVIDIA.',
+    'error.cadastreFirst': 'Зарегистрируйте хотя бы один API Gemini.',
     'error.cannotBeEmpty': 'Не может быть пустым.',
     'error.sentenceCouldNotExport': 'Не удалось экспортировать API.',
     'error.unsupportedConfig': 'Неподдерживаемая версия конфигурации.',
@@ -1564,7 +1564,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'log.apiStarted': 'API {number} начал отвечать за {elapsed}{model}',
     'log.apiCompleted': 'API {number} ответил за {elapsed}{tokens}',
     'log.apiTokens': ', {count} токенов',
-    'log.upstreamError': 'NVIDIA ошибка HTTP {status} на API {number}{model}: {message}',
+    'log.upstreamError': 'Gemini ошибка HTTP {status} на API {number}{model}: {message}',
     'log.streamCancelled': 'Поток отменён на API {number}: {message}',
     'log.modelSwitch': 'Авто смена модели{reason} на {model}',
     'log.apiError': 'Ошибка на API {number}: {message}',
@@ -1576,15 +1576,15 @@ export const messages: Record<Locale, I18nMessages> = {
     'log.modelPrefix': ' · модель {model}',
 
     /* ───── Terminal integration export ───── */
-    'export.title': 'AgentBridge NVIDIA - интеграция ({url})',
+    'export.title': 'AgentBridge ALT - интеграция ({url})',
     'export.localKey': 'Локальный ключ: {key}',
     'export.codexSection': '=== Codex CLI (~/.codex/config.toml) ===',
     'export.claudeSectionBash': '=== Claude Code (bash / zsh) ===',
     'export.claudeSectionPwsh': '=== Claude Code (PowerShell) ===',
     'export.endpointsSection': '=== Конечные точки ===',
 
-    /* ───── NVIDIA header ───── */
-    'header.subtitle': 'NVIDIA inference gateway · локальный API для ваших агентов кодинга',
+    /* ───── Gemini header ───── */
+    'header.subtitle': 'Gemini (AI Studio) gateway · локальный API для ваших агентов кодинга',
 
     /* ───── Navigation ───── */
     'nav.upDown': '↑/↓ навигация · Enter выбрать · Esc назад',
@@ -1593,12 +1593,12 @@ export const messages: Record<Locale, I18nMessages> = {
     'nav.pressAnyKeyStart': 'Нажмите любую клавишу для начала...',
 
     /* ───── Electron UI ───── */
-    'electron.brand.description': 'NVIDIA inference gateway',
+    'electron.brand.description': 'Gemini (AI Studio) gateway',
     'electron.hero.kicker': 'CODING AGENTS',
     'electron.hero.title': 'Локальный API для ваших агентов кодинга.',
     'electron.hero.subtitle': 'Совместим с OpenAI Responses, Chat Completions и Anthropic Messages.',
     'electron.provider.active': 'Активный провайдер',
-    'electron.provider.nvidia': 'NVIDIA',
+    'electron.provider.nvidia': 'Gemini',
     'electron.provider.modelByClient': 'Модель определяется клиентом',
     'electron.vaultCard': 'Хранилище API',
     'electron.gatewayCard': 'Шлюз',
@@ -1628,7 +1628,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'electron.passwordNeverSaved': 'Пароль никогда не сохраняется',
     'electron.gatewayReady': 'Шлюз готов для Codex CLI, Claude Code и пользовательских клиентов.',
     'electron.enterPasswordHint': 'Введите пароль для загрузки зашифрованных API.',
-    'electron.bothApisHint': 'Зарегистрируйте API NVIDIA для запуска шлюза.',
+    'electron.bothApisHint': 'Зарегистрируйте API Gemini для запуска шлюза.',
     'electron.apisUnlocked': 'API разблокированы только для этого сеанса.',
     'electron.gatewayFailure': 'Сбой шлюза',
     'electron.unlockModal': 'ЛОКАЛЬНОЕ ХРАНИЛИЩЕ',
@@ -1644,7 +1644,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'electron.localKeyDesc': 'Это ключ, который Codex, Claude Code и ваши клиенты должны отправлять для использования прокси. Задайте свой, чтобы не зависеть от стандартного.',
     'electron.localKeyLabel': 'Локальный ключ',
     'electron.saveLocalKey': 'Сохранить локальный ключ',
-    'electron.configModal': 'КЛЮЧИ API NVIDIA',
+    'electron.configModal': 'КЛЮЧИ API Gemini',
     'electron.configureRotation': 'Настроить ротацию',
     'electron.keysEncrypted': 'Ключи шифруются перед записью в JSON.',
     'electron.addAnotherApi': '+ Добавить ещё API',
@@ -1658,7 +1658,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'electron.penalizedApisTitle': 'Заблокированные API',
     'electron.penaltyDesc': 'Ключи, получившие HTTP 429, исключаются из ротации на 1 час. Счётчик показывает, сколько осталось до возврата каждого.',
     'electron.noPenalty': 'Нет заблокированных API.',
-    'electron.modelModal': 'МОДЕЛИ NVIDIA',
+    'electron.modelModal': 'МОДЕЛИ Gemini',
     'electron.selectModelTitle': 'Выбрать модель',
     'electron.autoToggleLabel': 'Автоматическое переключение моделей',
     'electron.autoToggleHintOn': 'Когда включено, прокси выбирает модель самостоятельно по порядку приоритета и меняет модель, если все API заблокированы (429).',
@@ -1768,7 +1768,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'dashboard.logTitle': '实时日志',
     'dashboard.waitingRequest': '等待第一个请求...',
     'dashboard.gatewayReady': '网关已就绪，可用于 Codex CLI、Claude Code 和 OpenAI/Anthropic 客户端。',
-    'dashboard.cadastreApis': '注册您的 NVIDIA API（按 A 键）以启动网关。',
+    'dashboard.cadastreApis': '注册您的 Gemini API（按 A 键）以启动网关。',
     'dashboard.pressToStart': '按 S 键启动网关。',
     'dashboard.gatewayError': '{message}',
     'dashboard.portInUse': '端口 {port} 已被占用。',
@@ -1792,7 +1792,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'hotkey.deactivated': '已停用',
 
     /* ───── APIs screen ───── */
-    'apis.title': 'NVIDIA API',
+    'apis.title': 'Gemini API',
     'apis.subtitle': '密钥已加密 (AES-256-GCM) 存储在 {path}',
     'apis.add': '+ 添加 API',
     'apis.save': '保存并加密',
@@ -1803,18 +1803,18 @@ export const messages: Record<Locale, I18nMessages> = {
     'apis.nKeys': '{count} 个密钥',
     'apis.hint': '在 API 上按回车编辑/删除。',
     'apis.addTitle': '添加 API',
-    'apis.addPrompt': '粘贴在 build.nvidia.com 生成的 nvapi-... 密钥',
-    'apis.apiKeyLabel': 'NVIDIA API 密钥',
-    'apis.mustStartWith': '密钥必须以 nvapi- 开头',
+    'apis.addPrompt': '粘贴在 aistudio.google.com/apikey 生成的 AIza... 密钥（每个项目一个）',
+    'apis.apiKeyLabel': 'Gemini API 密钥',
+    'apis.mustStartWith': '密钥无效（为空或包含空格）',
     'apis.saved': '{count} 个密钥加密成功。',
     'apis.api': 'API',
     'apis.replace': '替换密钥',
     'apis.remove': '删除',
     'apis.replaceTitle': '替换 API',
-    'apis.newKeyLabel': '新 NVIDIA 密钥',
+    'apis.newKeyLabel': '新 Gemini 密钥',
 
     /* ───── Models screen ───── */
-    'models.title': 'NVIDIA 模型',
+    'models.title': 'Gemini 模型',
     'models.autoSubtitle': '自动模式开：代理按优先级顺序并在 429 时切换。',
     'models.manualSubtitle': '手动：每次调用都发送到所选模型。',
     'models.autoToggle': '自动模型切换',
@@ -1875,7 +1875,7 @@ export const messages: Record<Locale, I18nMessages> = {
 
     /* ───── Delay screen ───── */
     'delay.title': '额外延迟 (ms)',
-    'delay.subtitle': '每次 NVIDIA 调用前的额外间隔 (0-600000)。',
+    'delay.subtitle': '每次 Gemini 调用前的额外间隔 (0-600000)。',
     'delay.label': '延迟（毫秒）',
     'delay.invalid': '请输入 0 到 600000 毫秒之间的值。',
 
@@ -1944,7 +1944,7 @@ export const messages: Record<Locale, I18nMessages> = {
     /* ───── Error / generic ───── */
     'error.generic': '错误',
     'error.unlockFirst': '请先解锁保险库。',
-    'error.cadastreFirst': '请注册至少一个 NVIDIA API。',
+    'error.cadastreFirst': '请注册至少一个 Gemini API。',
     'error.cannotBeEmpty': '不能为空。',
     'error.sentenceCouldNotExport': '无法导出 API。',
     'error.unsupportedConfig': '不支持的配置版本。',
@@ -1985,7 +1985,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'log.apiStarted': 'API {number} 开始响应 用时 {elapsed}{model}',
     'log.apiCompleted': 'API {number} 响应完成 用时 {elapsed}{tokens}',
     'log.apiTokens': '，{count} 个 token',
-    'log.upstreamError': 'NVIDIA HTTP {status} 错误 API {number}{model}：{message}',
+    'log.upstreamError': 'Gemini HTTP {status} 错误 API {number}{model}：{message}',
     'log.streamCancelled': '流已取消 API {number}：{message}',
     'log.modelSwitch': '自动切换模型{reason} 到 {model}',
     'log.apiError': 'API {number} 错误：{message}',
@@ -1997,15 +1997,15 @@ export const messages: Record<Locale, I18nMessages> = {
     'log.modelPrefix': ' · 模型 {model}',
 
     /* ───── Terminal integration export ───── */
-    'export.title': 'AgentBridge NVIDIA - 集成 ({url})',
+    'export.title': 'AgentBridge ALT - 集成 ({url})',
     'export.localKey': '本地密钥：{key}',
     'export.codexSection': '=== Codex CLI (~/.codex/config.toml) ===',
     'export.claudeSectionBash': '=== Claude Code (bash / zsh) ===',
     'export.claudeSectionPwsh': '=== Claude Code (PowerShell) ===',
     'export.endpointsSection': '=== 端点 ===',
 
-    /* ───── NVIDIA header ───── */
-    'header.subtitle': 'NVIDIA inference gateway · 为您的编程代理提供的本地 API',
+    /* ───── Gemini header ───── */
+    'header.subtitle': 'Gemini (AI Studio) gateway · 为您的编程代理提供的本地 API',
 
     /* ───── Navigation ───── */
     'nav.upDown': '↑/↓ 导航 · 回车选择 · Esc 返回',
@@ -2014,12 +2014,12 @@ export const messages: Record<Locale, I18nMessages> = {
     'nav.pressAnyKeyStart': '按任意键开始...',
 
     /* ───── Electron UI ───── */
-    'electron.brand.description': 'NVIDIA inference gateway',
+    'electron.brand.description': 'Gemini (AI Studio) gateway',
     'electron.hero.kicker': 'CODING AGENTS',
     'electron.hero.title': '为您的编程代理提供的本地 API。',
     'electron.hero.subtitle': '兼容 OpenAI Responses、Chat Completions 和 Anthropic Messages。',
     'electron.provider.active': '活跃提供商',
-    'electron.provider.nvidia': 'NVIDIA',
+    'electron.provider.nvidia': 'Gemini',
     'electron.provider.modelByClient': '模型由客户端定义',
     'electron.vaultCard': 'API 保险库',
     'electron.gatewayCard': '网关',
@@ -2049,7 +2049,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'electron.passwordNeverSaved': '密码永不保存',
     'electron.gatewayReady': '网关已就绪，可用于 Codex CLI、Claude Code 和自定义客户端。',
     'electron.enterPasswordHint': '输入密码以加载加密的 API。',
-    'electron.bothApisHint': '注册您的 NVIDIA API 以启动网关。',
+    'electron.bothApisHint': '注册您的 Gemini API 以启动网关。',
     'electron.apisUnlocked': 'API 仅在本会话中解锁。',
     'electron.gatewayFailure': '网关故障',
     'electron.unlockModal': '本地保险库',
@@ -2065,7 +2065,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'electron.localKeyDesc': '这是 Codex、Claude Code 和您的客户端需要发送的密钥以使用代理。设置您自己的密钥以避免依赖默认值。',
     'electron.localKeyLabel': '本地密钥',
     'electron.saveLocalKey': '保存本地密钥',
-    'electron.configModal': 'NVIDIA API 密钥',
+    'electron.configModal': 'Gemini API 密钥',
     'electron.configureRotation': '配置轮换',
     'electron.keysEncrypted': '密钥在写入 JSON 之前进行加密。',
     'electron.addAnotherApi': '+ 添加另一个 API',
@@ -2079,7 +2079,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'electron.penalizedApisTitle': '被惩罚的 API',
     'electron.penaltyDesc': '收到 HTTP 429 的密钥将被排除在轮换之外 1 小时。计数器显示每个密钥的剩余恢复时间。',
     'electron.noPenalty': '当前没有 API 处于惩罚状态。',
-    'electron.modelModal': 'NVIDIA 模型',
+    'electron.modelModal': 'Gemini 模型',
     'electron.selectModelTitle': '选择模型',
     'electron.autoToggleLabel': '自动模型切换',
     'electron.autoToggleHintOn': '开启后，代理根据优先级顺序自动选择模型，并在所有 API 被惩罚 (429) 时切换模型。',

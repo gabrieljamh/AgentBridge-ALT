@@ -1,3 +1,4 @@
+import { DATA_DIR_NAME } from '../config.ts';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
@@ -43,7 +44,7 @@ function documentsDir(): string {
 }
 
 export function appDir(): string {
-  return path.join(documentsDir(), 'AgentBridge');
+  return path.join(documentsDir(), DATA_DIR_NAME);
 }
 
 export function configPath(): string {

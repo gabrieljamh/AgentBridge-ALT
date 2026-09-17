@@ -1,7 +1,7 @@
 {
-  "name": "agentbridge-nvidia",
+  "name": "agentbridge-alt",
   "version": "4.5.0",
-  "description": "Gateway local NVIDIA para Codex CLI, Claude Code e clientes OpenAI.",
+  "description": "Gateway local Gemini (AI Studio) para Codex CLI, Claude Code e clientes OpenAI.",
   "main": "dist/desktop/desktop/main.js",
   "scripts": {
     "start": "tsx src/terminal/index.ts",
@@ -28,10 +28,10 @@
     "typescript": "^6.0.3"
   },
   "build": {
-    "appId": "com.techryo.agentbridge.nvidia",
-    "productName": "AgentBridge",
+    "appId": "com.gabrieljamh.agentbridge.alt",
+    "productName": "AgentBridge ALT",
     "directories": {
-      "output": "release-agentbridge"
+      "output": "release-agentbridge-alt"
     },
     "files": [
       "dist/desktop/**/*",
@@ -53,7 +53,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "AgentBridge"
+      "shortcutName": "AgentBridge ALT"
     }
   }
 }

@@ -14,7 +14,7 @@ import {
   DEFAULT_MODEL_PRIORITY,
   DEFAULT_PORT,
   INTERNAL_API_KEY,
-  NVIDIA_RPM_LIMIT,
+  UPSTREAM_RPM_LIMIT,
   REQUEST_DELAY_MS,
   type ModelCatalogEntry,
   DEFAULT_MODEL_PRICES
@@ -532,8 +532,8 @@ async function apisScreen(): Promise<void> {
         header: sectionHeader(t('apis.addTitle'), t('apis.addPrompt')),
         label: t('apis.apiKeyLabel'),
         mask: true,
-        placeholder: 'nvapi-...',
-        validate: (v) => (v.trim().startsWith('nvapi-') ? null : t('apis.mustStartWith'))
+        placeholder: 'AIza...',
+        validate: (v) => (/^\S{20,}$/.test(v.trim()) ? null : t('apis.mustStartWith'))
       });
       if (value && value.trim()) {
         unlockedConfig.apiKeys.push(value.trim());
@@ -575,8 +575,8 @@ async function apisScreen(): Promise<void> {
           header: sectionHeader(t('apis.replaceTitle'), ''),
           label: t('apis.newKeyLabel'),
           mask: true,
-          placeholder: 'nvapi-...',
-          validate: (v) => (v.trim().startsWith('nvapi-') ? null : t('apis.mustStartWith'))
+          placeholder: 'AIza...',
+          validate: (v) => (/^\S{20,}$/.test(v.trim()) ? null : t('apis.mustStartWith'))
         });
         if (value && value.trim()) {
           unlockedConfig.apiKeys[idx] = value.trim();
@@ -1444,7 +1444,7 @@ async function unlockFlow(): Promise<boolean> {
   const splash = () => {
     const w = innerWidth();
     const lines = ['', '', ...logo().map((l) => ' ' + centerVisible(l, w))];
-    lines.push('', ' ' + centerVisible(c.faint(`NVIDIA inference gateway · v${APP_VERSION}`), w), '');
+    lines.push('', ' ' + centerVisible(c.faint(`Gemini (AI Studio) gateway · v${APP_VERSION}`), w), '');
     return lines;
   };
 

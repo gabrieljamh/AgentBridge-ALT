@@ -3,7 +3,7 @@ import {
   DEFAULT_PORT,
   HEDGE_STICKY_REQUESTS,
   INTERNAL_API_KEY,
-  NVIDIA_RPM_LIMIT,
+  UPSTREAM_RPM_LIMIT,
   RATE_LIMIT_PENALTY_MS,
   RATE_LIMIT_WINDOW_MS,
   REQUEST_DELAY_MS,
@@ -627,7 +627,9 @@ export function markApiRateLimited(input: {
   // elegiveis. O castigo e por (chave, modelo) e roda em paralelo.
   const model = modelKey(input.model);
   const retryAfterMs = input.retryAfterMs && input.retryAfterMs > 0 ? input.retryAfterMs : 0;
-  const penaltyUntil = timestamp + Math.max(RATE_LIMIT_PENALTY_MS, retryAfterMs);
+  // Gemini: o penalty vem classificado do corpo do 429 (diario => ate meia-noite
+  // do Pacifico; por minuto => retryDelay). Sem informacao, usa o padrao.
+  const penaltyUntil = timestamp + (retryAfterMs > 0 ? retryAfterMs : RATE_LIMIT_PENALTY_MS);
   // Congela quantas 200 essa (chave, modelo) acumulou ate aqui. O contador NAO
   // zera agora: zera so quando o castigo expirar (resetExpiredWindow).
   const successesBefore429 = state.successCounts.get(model) || 0;
@@ -913,7 +915,7 @@ export class AllKeysRestingError extends Error {
   readonly code = 'all_resting';
   readonly waitMs: number;
   constructor(waitMs: number) {
-    super('Todas as APIs NVIDIA estao em castigo apos HTTP 429. Tente novamente mais tarde.');
+    super('Todas as APIs Gemini estao em castigo apos HTTP 429. Tente novamente mais tarde.');
     this.name = 'AllKeysRestingError';
     this.waitMs = waitMs;
   }
@@ -926,7 +928,7 @@ export async function acquireApiKey(options: AcquireApiKeyOptions = {}) {
 
   while (true) {
     if (!apiKeyStates.length) {
-      throw new Error('Nenhuma API NVIDIA foi desbloqueada.');
+      throw new Error('Nenhuma API Gemini foi desbloqueada.');
     }
 
     const timestamp = now();
@@ -1005,7 +1007,7 @@ export async function acquireApiKey(options: AcquireApiKeyOptions = {}) {
       apiKey: state.apiKey,
       apiNumber: usageEvent.apiNumber,
       requestsThisMinute: state.requestTimestamps.length,
-      remainingThisMinute: Math.max(0, NVIDIA_RPM_LIMIT - state.requestTimestamps.length)
+      remainingThisMinute: Math.max(0, UPSTREAM_RPM_LIMIT - state.requestTimestamps.length)
     };
   }
 }
@@ -1025,7 +1027,7 @@ export function getRuntimeStatus(timestamp = Date.now()) {
     return {
       apiNumber: index + 1,
       requestsThisMinute,
-      limitPerMinute: NVIDIA_RPM_LIMIT,
+      limitPerMinute: UPSTREAM_RPM_LIMIT,
       windowStartedAt: state.requestTimestamps[0] || null,
       resetsAt: nextResetAt(state, timestamp),
       resting,
@@ -1048,8 +1050,8 @@ export function getRuntimeStatus(timestamp = Date.now()) {
     activeModel: getActiveModel(),
     deactivatedModelIds: [...deactivatedIds],
     requestsThisMinute,
-    capacityPerMinute: apiKeyStates.length * NVIDIA_RPM_LIMIT,
-    limitPerKey: NVIDIA_RPM_LIMIT,
+    capacityPerMinute: apiKeyStates.length * UPSTREAM_RPM_LIMIT,
+    limitPerKey: UPSTREAM_RPM_LIMIT,
     apiUsage
   };
 }

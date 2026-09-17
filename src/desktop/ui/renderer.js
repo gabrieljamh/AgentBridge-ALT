@@ -19,7 +19,7 @@ const previewStatus = {
   modelPriority: Array.isArray(window.agentBridgeModels)
     ? window.agentBridgeModels.map((item) => item.model)
     : [],
-  provider: 'NVIDIA',
+  provider: 'Gemini',
   appVersion: '4.5.0',
   apiKey: 'EuAmoORyo',
   needLocalKey: false,
@@ -107,7 +107,7 @@ function codexSnippet(status) {
     'model_provider = "agentbridge"',
     '',
     '[model_providers.agentbridge]',
-    'name = "NVIDIA via AgentBridge"',
+    'name = "Gemini via AgentBridge"',
     `base_url = "${status.codexBaseUrl}"`,
     'wire_api = "responses"',
     'env_key = "AGENTBRIDGE_API_KEY"',
@@ -373,7 +373,7 @@ function addApiField(value = '', existingIndex = null) {
   const input = document.createElement('input');
   input.type = 'password';
   input.placeholder = existingIndex === null
-    ? 'nvapi-...'
+    ? 'AIza...'
     : `API salva ${existingIndex + 1} - deixe vazio para manter`;
   input.autocomplete = 'off';
   input.value = value;

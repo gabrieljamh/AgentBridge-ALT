@@ -1,4 +1,6 @@
 export const APP_NAME = 'AgentBridge';
+// Pasta em Documents/. Diferente do AgentBridge original para nao misturar vaults.
+export const DATA_DIR_NAME = 'AgentBridge-ALT';
 export const APP_VERSION = '4.5.0';
 export const INTERNAL_API_KEY = 'EuAmoORyo';
 export const DEFAULT_PORT = 3000;
@@ -6,14 +8,13 @@ export const DEFAULT_PORT = 3000;
 // usuario ainda nao escolheu nenhum dentro do app. O redirecionamento e SEMPRE
 // ativo: o cliente pode mandar "AgentBridge", "gpt-5" ou qualquer coisa que o
 // proxy reescreve para o modelo selecionado.
-export const DEFAULT_MODEL = 'deepseek-ai/deepseek-v4-pro';
+export const DEFAULT_MODEL = 'gemini-3.8-flash';
 
-// Um item do catalogo de modelos selecionaveis. `model` e o id real "provider/modelo"
-// enviado para a NVIDIA; `label` e o nome amigavel exibido; `icon` e a chave do SVG
-// embutido (deepseek, kimi, nemotron, qwen, minimax). Modelos adicionados pelo
-// usuario usam icon vazio: a UI desenha um placeholder com a primeira letra do nome.
-// `inputPrice` e `outputPrice` sao o custo por milhao de tokens (USD) cobrado pela
-// NVIDIA para este modelo, usados para calcular a economia no AgentBridge.
+// Um item do catalogo de modelos selecionaveis. `model` e o id real enviado ao
+// endpoint OpenAI-compativel do Gemini; `label` e o nome amigavel exibido; `icon`
+// e a chave do SVG embutido (vazio = placeholder com a primeira letra).
+// `inputPrice` e `outputPrice` (USD por 1M tokens) sao opcionais e so alimentam o
+// calculo de economia. Deixe vazio para modelos usados apenas no free tier.
 export type ModelCatalogEntry = {
   label: string;
   model: string;
@@ -22,32 +23,22 @@ export type ModelCatalogEntry = {
   outputPrice?: number;
 };
 
-// Precos padrao NVIDIA para os modelos pre-instalados (USD por 1M tokens).
-export const DEFAULT_MODEL_PRICES: Record<string, { input: number; output: number }> = {
-  'deepseek-ai/deepseek-v4-pro': { input: 0.435, output: 0.87 },
-  'deepseek-ai/deepseek-v4-flash': { input: 0.09, output: 0.18 },
-  'moonshotai/kimi-k2.6': { input: 0.66, output: 3.50 },
-  'nvidia/nemotron-3-ultra-550b-a55b': { input: 0.50, output: 2.20 },
-  'minimaxai/minimax-m3': { input: 0.30, output: 1.20 },
-  'qwen/qwen3.5-397b-a17b': { input: 0.385, output: 2.45 },
-  'z-ai/glm-5.2': { input: 0.93, output: 3 }
-};
+// Precos padrao (USD por 1M tokens). Vazio de proposito: preencha pelo app se
+// quiser acompanhar economia em relacao ao tier pago.
+export const DEFAULT_MODEL_PRICES: Record<string, { input: number; output: number }> = {};
 
-// Catalogo de modelos desativados (vazio por padrao). Modelos desativados nao
-// podem ser chamados nem listados em /v1/models, mas ainda contam na contabilidade
-// de tokens e economia.
 export const DEFAULT_DEACTIVATED_MODELS: ModelCatalogEntry[] = [];
 
-// Catalogo padrao de modelos. Pode ser editado, reordenado e ampliado pelo usuario;
-// os valores aqui sao apenas o ponto de partida quando ainda nao ha nada salvo.
+// Catalogo padrao (ids conferidos em ai.google.dev/gemini-api/docs/models, set/2026).
+// Editavel pelo usuario no app.
 export const DEFAULT_MODEL_CATALOG: ModelCatalogEntry[] = [
-  { label: 'Deepseek v4 pro', model: 'deepseek-ai/deepseek-v4-pro', icon: 'deepseek', inputPrice: 0.435, outputPrice: 0.87 },
-  { label: 'Kimi', model: 'moonshotai/kimi-k2.6', icon: 'kimi', inputPrice: 0.66, outputPrice: 3.50 },
-  { label: 'Deepseek v4 flash', model: 'deepseek-ai/deepseek-v4-flash', icon: 'deepseek', inputPrice: 0.09, outputPrice: 0.18 },
-  { label: 'Nemotron', model: 'nvidia/nemotron-3-ultra-550b-a55b', icon: 'nemotron', inputPrice: 0.50, outputPrice: 2.20 },
-  { label: 'Qwen', model: 'qwen/qwen3.5-397b-a17b', icon: 'qwen', inputPrice: 0.385, outputPrice: 2.45 },
-  { label: 'Minimax M3', model: 'minimaxai/minimax-m3', icon: 'minimax', inputPrice: 0.30, outputPrice: 1.20 },
-  { label: 'GLM 5.2', model: 'z-ai/glm-5.2', icon: '', inputPrice: 0.93, outputPrice: 3 }
+  { label: 'Gemini 3.8 Flash', model: 'gemini-3.8-flash', icon: '' },
+  { label: 'Gemini 3.1 Pro (preview)', model: 'gemini-3.1-pro-preview', icon: '' },
+  { label: 'Gemini 3.7 Flash', model: 'gemini-3.7-flash', icon: '' },
+  { label: 'Gemini 3.5 Flash', model: 'gemini-3.5-flash', icon: '' },
+  { label: 'Gemini 3.5 Flash-Lite', model: 'gemini-3.5-flash-lite', icon: '' },
+  { label: 'Gemini 2.5 Pro', model: 'gemini-2.5-pro', icon: '' },
+  { label: 'Gemini 2.5 Flash', model: 'gemini-2.5-flash', icon: '' }
 ];
 
 // Ordem de prioridade padrao do failover automatico de modelo (ids "provider/modelo").
@@ -60,14 +51,22 @@ export const DEFAULT_AUTO_TOGGLE = false; // alternancia automatica de modelo
 // Nome fixo que o usuario coloca no client (Codex/Claude). Nunca chega na NVIDIA:
 // e sempre substituido pelo modelo selecionado no proxy.
 export const FIXED_CLIENT_MODEL = 'AgentBridge';
-export const NVIDIA_CHAT_URL = 'https://integrate.api.nvidia.com/v1/chat/completions';
+// Endpoint OpenAI-compativel do Gemini (AI Studio). Pode ser sobrescrito por
+// AGENTBRIDGE_UPSTREAM_URL para testar outro provedor compativel.
+export const UPSTREAM_CHAT_URL = process.env.AGENTBRIDGE_UPSTREAM_URL
+  || 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
 export const REQUEST_DELAY_MS = 0;
-export const NVIDIA_RPM_LIMIT = 35;
+// So telemetria (nao ha throttle local). Limites reais do Gemini variam por
+// modelo/tier e sao POR PROJETO: veja aistudio.google.com/rate-limit.
+export const UPSTREAM_RPM_LIMIT = 10;
 export const RATE_LIMIT_WINDOW_MS = 60_000;
 // Castigo aplicado a uma chave que recebeu HTTP 429: ela fica fora do rodizio
 // por este tempo (1 hora) antes de poder ser chamada de novo. Contado por chave,
 // em paralelo -- nao e um limite universal.
 export const RATE_LIMIT_PENALTY_MS = 60 * 60_000;
+// Castigo para 429 de limite POR MINUTO (RPM/TPM) quando o Gemini nao informa
+// retryDelay. Limites diarios (RPD) ficam de castigo ate a meia-noite do Pacifico.
+export const RATE_LIMIT_MINUTE_PENALTY_MS = 60_000;
 // Teto so para socket realmente morto. Como nao ha mais retry/failover, NAO
 // abortamos um prefill saudavel: contextos grandes podem demorar bem mais que 120s
 // ate o primeiro token, e abortar so forcava o cliente a reenviar tudo de novo.

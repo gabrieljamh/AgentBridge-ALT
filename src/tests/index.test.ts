@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { app } from '../index.ts';
-import { FIXED_CLIENT_MODEL, INTERNAL_API_KEY } from '../config.ts';
+import { FIXED_CLIENT_MODEL, INTERNAL_API_KEY, UPSTREAM_RPM_LIMIT } from '../config.ts';
 import { onApiRequestLog, setRuntimeConfig } from '../services/runtime.ts';
 import {
   LOCAL_TOOL_EDIT_POLICY_MARKER,
@@ -19,8 +19,8 @@ test('health reports locked and unlocked runtime state', async () => {
   assert.equal(body.status, 'ok');
   assert.equal(body.api_keys, 1);
   assert.equal(body.delay_ms, 0);
-  assert.equal(body.rpm_limit_per_key, 35);
-  assert.equal(body.capacity_per_minute, 35);
+  assert.equal(body.rpm_limit_per_key, UPSTREAM_RPM_LIMIT);
+  assert.equal(body.capacity_per_minute, UPSTREAM_RPM_LIMIT);
 });
 
 test('local endpoints require EuAmoORyo', async () => {
@@ -248,7 +248,7 @@ test('GET /v1/models lista os modelos reais e o pseudo-modelo AgentBridge', asyn
   assert.equal(res.status, 200);
   const body = await res.json();
   const ids = body.data.map((m: any) => m.id);
-  assert.ok(ids.includes('moonshotai/kimi-k2.6'), 'deve listar um modelo real');
+  assert.ok(ids.includes('gemini-3.8-flash'), 'deve listar um modelo real');
   assert.ok(ids.includes(FIXED_CLIENT_MODEL), 'deve manter o AgentBridge');
 });
 

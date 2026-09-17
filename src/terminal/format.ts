@@ -73,7 +73,7 @@ export function codexConfigToml(baseUrl: string): string {
     'model_provider = "agentbridge"',
     '',
     '[model_providers.agentbridge]',
-    'name = "NVIDIA via AgentBridge"',
+    'name = "Gemini via AgentBridge"',
     `base_url = "${baseUrl}/v1"`,
     'wire_api = "responses"',
     'env_key = "AGENTBRIDGE_API_KEY"'

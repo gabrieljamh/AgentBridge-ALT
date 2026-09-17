@@ -2,7 +2,7 @@ import {
   FIRST_RESPONSE_TIMEOUT_MS,
   HEDGE_SLOW_THRESHOLD_MS,
   HEDGE_PRIMARY_GRACE_MS,
-  NVIDIA_CHAT_URL
+  UPSTREAM_CHAT_URL
 } from '../config.ts';
 import {
   acquireApiKey,
@@ -21,6 +21,7 @@ import {
   markApiUpstreamError,
   type AcquireApiKeyOptions
 } from './runtime.ts';
+import { inspectRateLimit, rememberFromToolCalls, rememberToolCallExtra, withThoughtSignatures } from './gemini.ts';
 
 // import { saveLastError } from './lastErrors.ts';
 // import { extractUserPrompt } from './lastPrompt.ts';
@@ -79,6 +80,8 @@ type SseUpstreamError = {
 type ToolCallDraft = {
   id?: string;
   type: 'function';
+  // Gemini: { google: { thought_signature } }. Precisa voltar no proximo turno.
+  extra_content?: Record<string, unknown>;
   function: {
     name?: string;
     arguments: string;
@@ -135,16 +138,6 @@ function cloneHeaders(response: Response) {
   if (contentType) headers.set('content-type', contentType);
   headers.set('cache-control', 'no-store');
   return headers;
-}
-
-function parseRetryAfterMs(response: Response) {
-  const header = response.headers.get('retry-after');
-  if (!header) return undefined;
-  const seconds = Number(header);
-  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000);
-  const date = Date.parse(header);
-  if (!Number.isNaN(date)) return Math.max(0, date - Date.now());
-  return undefined;
 }
 
 function responseFromUpstream(response: Response) {
@@ -211,6 +204,7 @@ function appendSseTextAndCompletionReason(state: SseInspectionState, text: strin
         }
         if (Array.isArray(choice?.delta?.tool_calls) && choice.delta.tool_calls.length > 0) {
           state.hasOutput = true;
+          rememberFromToolCalls(choice.delta.tool_calls);
         }
         if (choice?.finish_reason) completionReason = 'finish_reason';
       } catch {
@@ -405,8 +399,10 @@ function mergeToolCall(
     drafts.set(index, draft);
   }
   if (toolCall.id) draft.id = toolCall.id;
+  if (toolCall.extra_content && typeof toolCall.extra_content === 'object') draft.extra_content = toolCall.extra_content;
   if (toolCall.function?.name) draft.function.name = toolCall.function.name;
   if (toolCall.function?.arguments) draft.function.arguments += toolCall.function.arguments;
+  if (draft.extra_content) rememberToolCallExtra(draft.id, draft.extra_content);
 }
 
 function aggregateChatCompletion(events: any[]) {
@@ -738,6 +734,7 @@ async function readRemainingText(
 function buildUpstreamBody(body: Record<string, unknown>) {
   return {
     ...body,
+    ...(Array.isArray(body.messages) ? { messages: withThoughtSignatures(body.messages, body.model) } : {}),
     stream: true,
     stream_options: {
       ...(body.stream_options && typeof body.stream_options === 'object'
@@ -1046,7 +1043,7 @@ export async function forwardToNvidia(
     // Sem hedge: comportamento original
     // ======================================================================
     try {
-      const { response, reader, value } = await readFirstChunk(fetchImpl, NVIDIA_CHAT_URL, {
+      const { response, reader, value } = await readFirstChunk(fetchImpl, UPSTREAM_CHAT_URL, {
         method: 'POST',
         headers: {
           authorization: `Bearer ${acquired.apiKey}`,
@@ -1060,7 +1057,7 @@ export async function forwardToNvidia(
 
       if (response.status === 429 && attempt < maxAttempts) {
         markApiUpstreamError({ apiNumber, status: 429, message: response.statusText || 'Too Many Requests', requestStartedAt, model: activeModel, attempt, maxAttempts, timestamp: now() });
-        markApiRateLimited({ apiNumber, model: activeModel, retryAfterMs: parseRetryAfterMs(response), timestamp: now() });
+        markApiRateLimited({ apiNumber, model: activeModel, retryAfterMs: (await inspectRateLimit(response)).penaltyMs, timestamp: now() });
         markApiResponseCompleted({ apiNumber, requestStartedAt, attempt, maxAttempts, timestamp: now() });
         await reader.cancel().catch(() => {});
         continue;
@@ -1068,7 +1065,7 @@ export async function forwardToNvidia(
 
       if (!response.ok) {
         markApiUpstreamError({ apiNumber, status: response.status, message: response.statusText || `NVIDIA HTTP ${response.status}`, requestStartedAt, model: activeModel, attempt, maxAttempts, timestamp: now() });
-        if (response.status === 429) markApiRateLimited({ apiNumber, model: activeModel, retryAfterMs: parseRetryAfterMs(response), timestamp: now() });
+        if (response.status === 429) markApiRateLimited({ apiNumber, model: activeModel, retryAfterMs: (await inspectRateLimit(response)).penaltyMs, timestamp: now() });
         markApiResponseCompleted({ apiNumber, requestStartedAt, attempt, maxAttempts, timestamp: now() });
         await reader.cancel().catch(() => {});
 
@@ -1308,7 +1305,7 @@ async function hedgeForward(
   // Retorna {response, reader} ou null em caso de abort/timeout/erro
   const primaryHttp = (async (): Promise<{ response: Response; reader: ReadableStreamDefaultReader<Uint8Array> } | null> => {
     try {
-      const response = await withTimeout(fetchImpl(NVIDIA_CHAT_URL, {
+      const response = await withTimeout(fetchImpl(UPSTREAM_CHAT_URL, {
         method: 'POST',
         headers: {
           authorization: `Bearer ${acquired.apiKey}`,
@@ -1319,7 +1316,8 @@ async function hedgeForward(
         body: JSON.stringify(upstreamBody)
       }), timeoutMs);
       if (primaryAbort.signal.aborted) return null;
-      if (!response.body) return { response, reader: new ReadableStream<Uint8Array>().getReader() };
+      // Nao trava o body em erro: o 429 precisa ser lido para classificar a cota.
+      if (!response.body || !response.ok) return { response, reader: new ReadableStream<Uint8Array>().getReader() };
       return { response, reader: response.body.getReader() };
     } catch (error: any) {
       if (error?.name === 'AbortError') return null;
@@ -1352,7 +1350,7 @@ async function hedgeForward(
     // 429: coloca em castigo e retorna undefined pro loop tentar de novo
     if (response.status === 429) {
       markApiUpstreamError({ apiNumber: primaryApiNumber, status: 429, message: response.statusText || 'Too Many Requests', requestStartedAt, model: activeModel, attempt, maxAttempts, timestamp: now() });
-      markApiRateLimited({ apiNumber: primaryApiNumber, model: activeModel, retryAfterMs: parseRetryAfterMs(response), timestamp: now() });
+      markApiRateLimited({ apiNumber: primaryApiNumber, model: activeModel, retryAfterMs: (await inspectRateLimit(response)).penaltyMs, timestamp: now() });
       markApiResponseCompleted({ apiNumber: primaryApiNumber, requestStartedAt, attempt, maxAttempts, timestamp: now() });
       await reader.cancel().catch(() => {});
       cleanup();
@@ -1362,7 +1360,7 @@ async function hedgeForward(
     // Outro HTTP erro
     if (!response.ok) {
       markApiUpstreamError({ apiNumber: primaryApiNumber, status: response.status, message: response.statusText || `NVIDIA HTTP ${response.status}`, requestStartedAt, model: activeModel, attempt, maxAttempts, timestamp: now() });
-      if (response.status === 429) markApiRateLimited({ apiNumber: primaryApiNumber, model: activeModel, retryAfterMs: parseRetryAfterMs(response), timestamp: now() });
+      if (response.status === 429) markApiRateLimited({ apiNumber: primaryApiNumber, model: activeModel, retryAfterMs: (await inspectRateLimit(response)).penaltyMs, timestamp: now() });
       if (response.status !== 429) {
         // [DESLIGADO] captureUpstreamErrorForLog comentado — last_errors.json nao sera salvo.
         // void captureUpstreamErrorForLog(response, body, activeModel);
@@ -1522,7 +1520,7 @@ async function processPrimaryHttp(
 
   if (response.status === 429 && attempt < maxAttempts) {
     markApiUpstreamError({ apiNumber: primaryApiNumber, status: 429, message: response.statusText || 'Too Many Requests', requestStartedAt, model: activeModel, attempt, maxAttempts, timestamp: now() });
-    markApiRateLimited({ apiNumber: primaryApiNumber, model: activeModel, retryAfterMs: parseRetryAfterMs(response), timestamp: now() });
+    markApiRateLimited({ apiNumber: primaryApiNumber, model: activeModel, retryAfterMs: (await inspectRateLimit(response)).penaltyMs, timestamp: now() });
     markApiResponseCompleted({ apiNumber: primaryApiNumber, requestStartedAt, attempt, maxAttempts, timestamp: now() });
     await reader.cancel().catch(() => {});
     return undefined;
@@ -1530,7 +1528,7 @@ async function processPrimaryHttp(
 
   if (!response.ok) {
     markApiUpstreamError({ apiNumber: primaryApiNumber, status: response.status, message: response.statusText || `NVIDIA HTTP ${response.status}`, requestStartedAt, model: activeModel, attempt, maxAttempts, timestamp: now() });
-    if (response.status === 429) markApiRateLimited({ apiNumber: primaryApiNumber, model: activeModel, retryAfterMs: parseRetryAfterMs(response), timestamp: now() });
+    if (response.status === 429) markApiRateLimited({ apiNumber: primaryApiNumber, model: activeModel, retryAfterMs: (await inspectRateLimit(response)).penaltyMs, timestamp: now() });
     markApiResponseCompleted({ apiNumber: primaryApiNumber, requestStartedAt, attempt, maxAttempts, timestamp: now() });
     await reader.cancel().catch(() => {});
     return undefined;
@@ -1571,7 +1569,7 @@ async function doFetchWithModel(
   const upstreamBody = buildUpstreamBody(body);
 
   try {
-    const { response, reader, value } = await readFirstChunk(fetchImpl, NVIDIA_CHAT_URL, {
+    const { response, reader, value } = await readFirstChunk(fetchImpl, UPSTREAM_CHAT_URL, {
       method: 'POST',
       headers: {
         authorization: `Bearer ${acquired.apiKey}`,
@@ -1591,7 +1589,7 @@ async function doFetchWithModel(
 
     if (!response.ok) {
       markApiUpstreamError({ apiNumber, status: response.status, message: response.statusText || `NVIDIA HTTP ${response.status}`, requestStartedAt, model, attempt: 1, maxAttempts: 1, timestamp: Date.now() });
-      if (response.status === 429) markApiRateLimited({ apiNumber, model, retryAfterMs: parseRetryAfterMs(response), timestamp: Date.now() });
+      if (response.status === 429) markApiRateLimited({ apiNumber, model, retryAfterMs: (await inspectRateLimit(response)).penaltyMs, timestamp: Date.now() });
       if (response.status !== 429) {
         // [DESLIGADO] captureUpstreamErrorForLog comentado — last_errors.json nao sera salvo.
         // void captureUpstreamErrorForLog(response, body, model);

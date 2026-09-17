@@ -16,7 +16,7 @@
               <h1>AgentBridge</h1>
               <span id="appVersion" class="version">v4.5.0</span>
             </div>
-            <p data-i18n="electron.brand.description">NVIDIA inference gateway</p>
+            <p data-i18n="electron.brand.description">Gemini (AI Studio) gateway</p>
           </div>
         </div>
         <div id="proxyStatus" class="status-badge locked">
@@ -37,7 +37,7 @@
             <div class="provider-name">
               <span class="provider-avatar">N</span>
               <div>
-                <strong data-i18n="electron.provider.nvidia">NVIDIA</strong>
+                <strong data-i18n="electron.provider.nvidia">Gemini</strong>
                 <span data-i18n="electron.provider.modelByClient">Modelo definido pelo cliente</span>
               </div>
             </div>
@@ -176,7 +176,7 @@
     <div id="configModal" class="modal-backdrop hidden">
       <form id="configForm" class="modal-card">
         <div class="modal-heading">
-          <div><span class="kicker" data-i18n="electron.configModal">NVIDIA API KEYS</span><h2 data-i18n="electron.configureRotation">Configurar rotacao</h2></div>
+          <div><span class="kicker" data-i18n="electron.configModal">GEMINI API KEYS</span><h2 data-i18n="electron.configureRotation">Configurar rotacao</h2></div>
           <button id="closeConfigButton" class="close-button" type="button" data-i18n="electron.close">Fechar</button>
         </div>
         <p data-i18n="electron.keysEncrypted">As chaves sao criptografadas antes de serem gravadas no JSON.</p>
@@ -204,7 +204,7 @@
     <div id="selectModal" class="modal-backdrop hidden">
       <div class="modal-card wide-card">
         <div class="modal-heading">
-          <div><span class="kicker" data-i18n="electron.modelModal">MODELOS NVIDIA</span><h2 data-i18n="electron.selectModelTitle">Selecionar modelo</h2></div>
+          <div><span class="kicker" data-i18n="electron.modelModal">MODELOS GEMINI</span><h2 data-i18n="electron.selectModelTitle">Selecionar modelo</h2></div>
           <button id="closeSelectButton" class="close-button" type="button" data-i18n="electron.close">Fechar</button>
         </div>
 
@@ -292,7 +292,7 @@
     </div>
 
     <script src="./model-icons.js"></script>
-    <script>window.agentBridgeDefaultPrices = {"deepseek-ai/deepseek-v4-pro":{"input":0.435,"output":0.87},"deepseek-ai/deepseek-v4-flash":{"input":0.09,"output":0.18},"moonshotai/kimi-k2.6":{"input":0.66,"output":3.50},"nvidia/nemotron-3-ultra-550b-a55b":{"input":0.50,"output":2.20},"minimaxai/minimax-m3":{"input":0.30,"output":1.20},"qwen/qwen3.5-397b-a17b":{"input":0.385,"output":2.45}};</script>
+    <script>window.agentBridgeDefaultPrices = {};</script>
     <script src="./renderer.js"></script>
   </body>
 </html>

@@ -8,8 +8,9 @@ import {
   DEFAULT_MODEL_CATALOG,
   DEFAULT_PORT,
   FIXED_CLIENT_MODEL,
-  NVIDIA_RPM_LIMIT,
-  RATE_LIMIT_WINDOW_MS
+  UPSTREAM_RPM_LIMIT,
+  RATE_LIMIT_WINDOW_MS,
+  DATA_DIR_NAME
 } from './config.ts';
 import { recordTokenUsage, readTokenUsage, flushTokenUsage } from './services/token-tracking.ts';
 import { extractClientIp, extractUserPrompt } from './services/lastPrompt.ts';
@@ -53,7 +54,7 @@ function tokenUsagePath() {
   const documents = process.platform === 'win32'
     ? path.join(process.env.USERPROFILE || home, 'Documents')
     : path.join(home, 'Documents');
-  return path.join(documents, 'AgentBridge', 'used_tokens.json');
+  return path.join(documents, DATA_DIR_NAME, 'used_tokens.json');
 }
 
 // Listener global: registra tokens consumidos em cada chamada completada.
@@ -79,11 +80,11 @@ app.get('/health', (context) => {
   const runtime = getRuntimeStatus();
   return context.json({
     status: runtime.unlocked ? 'ok' : 'locked',
-    provider: 'NVIDIA',
+    provider: 'Gemini',
     model_source: 'request',
     api_keys: runtime.keyCount,
     delay_ms: runtime.requestDelayMs,
-    rpm_limit_per_key: NVIDIA_RPM_LIMIT,
+    rpm_limit_per_key: UPSTREAM_RPM_LIMIT,
     rate_limit_window_ms: RATE_LIMIT_WINDOW_MS,
     requests_this_minute: runtime.requestsThisMinute,
     capacity_per_minute: runtime.capacityPerMinute,
@@ -429,11 +430,11 @@ app.get('/health', (context) => {
   const runtime = getRuntimeStatus();
   return context.json({
     status: runtime.unlocked ? 'ok' : 'locked',
-    provider: 'NVIDIA',
+    provider: 'Gemini',
     model_source: 'request',
     api_keys: runtime.keyCount,
     delay_ms: runtime.requestDelayMs,
-    rpm_limit_per_key: NVIDIA_RPM_LIMIT,
+    rpm_limit_per_key: UPSTREAM_RPM_LIMIT,
     rate_limit_window_ms: RATE_LIMIT_WINDOW_MS,
     requests_this_minute: runtime.requestsThisMinute,
     capacity_per_minute: runtime.capacityPerMinute,
@@ -454,7 +455,7 @@ app.get('/v1/models', (context) => {
       id,
       object: 'model' as const,
       created,
-      owned_by: 'nvidia',
+      owned_by: 'google',
       available: isModelAvailable(id),
       ...(meta ? { label: meta.label, icon: meta.icon } : {})
     };
@@ -563,7 +564,7 @@ app.get('/v1/models/available', (context) => {
         id,
         object: 'model' as const,
         created,
-        owned_by: 'nvidia',
+        owned_by: 'google',
         available: isModelAvailable(id),
         ...(meta ? { label: meta.label, icon: meta.icon } : {})
       };
@@ -675,10 +676,10 @@ function formatStandaloneLog(event: ApiRequestLogEvent) {
     return `[${time}] Erro no proxy ${clientLogTarget(event)}${elapsed}: ${event.message}`;
   }
   if (event.type === 'called') {
-    return `[${time}] API ${event.apiNumber} selecionada (${event.requestsThisMinute}/${NVIDIA_RPM_LIMIT} nesta janela)`;
+    return `[${time}] API ${event.apiNumber} selecionada (${event.requestsThisMinute}/${UPSTREAM_RPM_LIMIT} nesta janela)`;
   }
   if (event.type === 'delay') {
-    return `[${time}] Esperando delay de ${event.delayMs}ms antes da NVIDIA${attempt}`;
+    return `[${time}] Esperando delay de ${event.delayMs}ms antes do Gemini${attempt}`;
   }
   if (event.type === 'rate_limit_wait') {
     return `[${time}] Aguardando throttle de RPM por ${event.waitMs}ms`;
@@ -690,7 +691,7 @@ function formatStandaloneLog(event: ApiRequestLogEvent) {
     return `[${time}] API ${event.apiNumber} completou resposta${elapsed}${attempt}`;
   }
   if (event.type === 'upstream_error') {
-    return `[${time}] NVIDIA retornou erro na API ${event.apiNumber} HTTP ${event.status}${elapsed}${attempt}${event.model ? ` (modelo ${event.model})` : ''}: ${event.message}`;
+    return `[${time}] Gemini retornou erro na API ${event.apiNumber} HTTP ${event.status}${elapsed}${attempt}${event.model ? ` (modelo ${event.model})` : ''}: ${event.message}`;
   }
   if (event.type === 'cancelled') {
     return `[${time}] Stream cancelado na API ${event.apiNumber}${elapsed}${attempt}: ${event.message}`;
@@ -702,7 +703,7 @@ function formatStandaloneLog(event: ApiRequestLogEvent) {
 }
 
 export async function startStandaloneServer() {
-  const apiKeys = (process.env.NVIDIA_API_KEYS || process.env.NVIDIA_API_KEY || '')
+  const apiKeys = (process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || process.env.NVIDIA_API_KEYS || '')
     .split(',')
     .map((value) => value.trim())
     .filter(Boolean);
@@ -723,7 +724,7 @@ export async function startStandaloneServer() {
     console.log(formatStandaloneLog(event));
   });
   serve({ fetch: app.fetch, port }, () => {
-    console.log(`AgentBridge NVIDIA em http://localhost:${port}`);
+    console.log(`AgentBridge ALT (Gemini) em http://localhost:${port}`);
   });
 }
 

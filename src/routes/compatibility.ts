@@ -1,6 +1,7 @@
 import type { Context } from 'hono';
 import { stream as honoStream } from 'hono/streaming';
 import { v4 as uuidv4 } from 'uuid';
+import { rememberToolCallExtra } from '../services/gemini.ts';
 
 const SSE_BUFFER_MAX_LENGTH = 65_536;
 const SSE_BUFFER_TAIL_LENGTH = 16_384;
@@ -11,6 +12,7 @@ type ChatToolCall = {
   index?: number;
   id?: string;
   type?: string;
+  extra_content?: Record<string, unknown>;
   function?: {
     name?: string;
     arguments?: string;
@@ -76,20 +78,24 @@ function responsesInputToMessages(body: any) {
     }
 
     if (item?.type === 'function_call') {
-      messages.push({
-        role: 'assistant',
-        content: null,
-        tool_calls: [{
-          id: item.call_id || item.id || `call_${uuidv4()}`,
-          type: 'function',
-          function: {
-            name: item.name,
-            arguments: typeof item.arguments === 'string'
-              ? item.arguments
-              : JSON.stringify(item.arguments || {})
-          }
-        }]
-      });
+      const toolCall = {
+        id: item.call_id || item.id || `call_${uuidv4()}`,
+        type: 'function',
+        function: {
+          name: item.name,
+          arguments: typeof item.arguments === 'string'
+            ? item.arguments
+            : JSON.stringify(item.arguments || {})
+        }
+      };
+      // Chamadas paralelas chegam como itens separados; o Gemini espera todas no
+      // MESMO turno do assistente (so a primeira leva thought signature).
+      const previous: any = messages[messages.length - 1];
+      if (previous?.role === 'assistant' && Array.isArray(previous.tool_calls)) {
+        previous.tool_calls.push(toolCall);
+      } else {
+        messages.push({ role: 'assistant', content: null, tool_calls: [toolCall] });
+      }
       continue;
     }
 
@@ -280,10 +286,12 @@ function chatMessageToResponseOutput(message: any) {
   }
 
   for (const toolCall of message?.tool_calls || []) {
+    const callId = toolCall.id || `call_${uuidv4()}`;
+    rememberToolCallExtra(callId, toolCall.extra_content);
     output.push({
       type: 'function_call',
       id: `fc_${uuidv4()}`,
-      call_id: toolCall.id || `call_${uuidv4()}`,
+      call_id: callId,
       name: toolCall.function?.name || '',
       arguments: toolCall.function?.arguments || '{}',
       status: 'completed'
@@ -437,6 +445,7 @@ export async function responsesApi(c: Context, invokeChat: ChatInvoker) {
           });
         }
         if (toolCall.function?.name) item.name = toolCall.function.name;
+        rememberToolCallExtra(item.call_id, toolCall.extra_content);
         if (toolCall.function?.arguments) {
           item.arguments += toolCall.function.arguments;
           await emit('response.function_call_arguments.delta', {
@@ -479,9 +488,11 @@ function chatMessageToAnthropicContent(message: any) {
     } catch {
       input = { raw: toolCall.function?.arguments || '' };
     }
+    const toolUseId = toolCall.id || `toolu_${uuidv4()}`;
+    rememberToolCallExtra(toolUseId, toolCall.extra_content);
     content.push({
       type: 'tool_use',
-      id: toolCall.id || `toolu_${uuidv4()}`,
+      id: toolUseId,
       name: toolCall.function?.name || '',
       input
     });
@@ -578,18 +589,19 @@ export async function anthropicMessagesApi(c: Context, invokeChat: ChatInvoker) 
         const index = toolCall.index || 0;
         let block = toolBlocks.get(index);
         if (!block) {
-          block = { contentIndex: contentIndex++, toolCall: { ...toolCall } };
+          block = { contentIndex: contentIndex++, toolCall: { ...toolCall, id: toolCall.id || `toolu_${uuidv4()}` } };
           toolBlocks.set(index, block);
           await emit('content_block_start', {
             index: block.contentIndex,
             content_block: {
               type: 'tool_use',
-              id: toolCall.id || `toolu_${uuidv4()}`,
+              id: block.toolCall.id,
               name: toolCall.function?.name || '',
               input: {}
             }
           });
         }
+        rememberToolCallExtra(block.toolCall.id, toolCall.extra_content);
         if (toolCall.function?.arguments) {
           await emit('content_block_delta', {
             index: block.contentIndex,

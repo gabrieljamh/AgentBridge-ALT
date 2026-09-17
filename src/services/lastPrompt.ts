@@ -7,6 +7,7 @@
 // O arquivo mantem sempre as 10 entradas mais recentes: cada nova request
 // empurra a mais antiga para fora (FIFO).
 
+import { DATA_DIR_NAME } from '../config.ts';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import type { IncomingMessage } from 'node:http';
@@ -28,7 +29,7 @@ export function setLastPromptDirectory(directory: string) {
 function lastPromptDirectory(): string {
   return configuredDirectory
     || process.env.AGENTBRIDGE_APIS_DIR
-    || path.join(homedir(), 'Documents', 'AgentBridge');
+    || path.join(homedir(), 'Documents', DATA_DIR_NAME);
 }
 
 function lastPromptPath(): string {

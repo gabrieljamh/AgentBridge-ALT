@@ -1,6 +1,28 @@
-# AgentBridge NVIDIA
+# AgentBridge ALT (Gemini / Google AI Studio)
 
-Local gateway to use the NVIDIA API from OpenAI-compatible clients, Codex CLI, and Claude Code.
+Fork of [Ryo448/AgentBridge](https://github.com/Ryo448/AgentBridge) that targets the
+Gemini API's OpenAI-compatible endpoint instead of NVIDIA NIM. Use Gemini models
+from OpenAI-compatible clients, Codex CLI, and Claude Code.
+
+> **Prototype.** Built without live Gemini traffic yet — expect to tune quotas.
+
+### What's different from upstream
+
+- **Upstream:** `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`
+  (override with `AGENTBRIDGE_UPSTREAM_URL`).
+- **Keys:** AI Studio keys (`aistudio.google.com/apikey`). Gemini rate limits are
+  **per project**, so register **one key per project** — extra keys in the same
+  project add no capacity.
+- **Smarter 429 penalties:** the `RESOURCE_EXHAUSTED` body is parsed. Daily quota
+  (RPD) → the (key, model) pair rests until midnight Pacific time. Per-minute
+  quota → rests for Google's `retryDelay` (default 60 s).
+- **Thought signatures:** Gemini 3+ tool calls carry
+  `extra_content.google.thought_signature`, which must be sent back next turn.
+  Claude Code / Codex drop it, so the proxy caches signatures by tool-call id and
+  re-injects them; if missing, it sends Google's `skip_thought_signature_validator`
+  placeholder. Parallel Responses `function_call` items are merged into one turn.
+- **Data folder:** `Documents\AgentBridge-ALT\` (separate from the original app).
+- Headless env vars: `GEMINI_API_KEYS` (comma-separated) or `GEMINI_API_KEY`.
 
 ## Desktop
 
@@ -12,7 +34,7 @@ npm run desktop
 On first launch, set the password used to encrypt your API keys. The vault is saved at:
 
 ```text
-Documents\AgentBridge\config.json
+Documents\AgentBridge-ALT\config.json
 ```
 
 The password is never persisted. Decrypted keys live only in memory while the app is open.
@@ -125,7 +147,7 @@ npm start
 guides you through creating a master password and registering your NVIDIA keys.
 
 **Subsequent runs:** it reads the **same encrypted vault** as the desktop
-(`Documents\AgentBridge\config.json`). The password is never saved — keys are
+(`Documents\AgentBridge-ALT\config.json`). The password is never saved — keys are
 only decrypted in memory during the session.
 
 #### Live dashboard

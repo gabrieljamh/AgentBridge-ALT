@@ -18,7 +18,8 @@ import {
   DEFAULT_PORT,
   INTERNAL_API_KEY,
   REQUEST_DELAY_MS,
-  type ModelCatalogEntry
+  type ModelCatalogEntry,
+  DATA_DIR_NAME
 } from '../config.ts';
 import {
   configExists,
@@ -79,15 +80,15 @@ let unlockedConfig: UnlockedConfig = {
 };
 
 function configPath() {
-  return path.join(electronApp.getPath('documents'), 'AgentBridge', 'config.json');
+  return path.join(electronApp.getPath('documents'), DATA_DIR_NAME, 'config.json');
 }
 
 function penaltiesPath() {
-  return path.join(electronApp.getPath('documents'), 'AgentBridge', 'penalties.json');
+  return path.join(electronApp.getPath('documents'), DATA_DIR_NAME, 'penalties.json');
 }
 
 function localePath() {
-  return path.join(electronApp.getPath('documents'), 'AgentBridge', 'locale.txt');
+  return path.join(electronApp.getPath('documents'), DATA_DIR_NAME, 'locale.txt');
 }
 
 // Impressao digital curta da chave (NAO o segredo) para casar o castigo salvo com
@@ -221,7 +222,7 @@ function getStatus() {
     modelPriority: unlockedConfig.modelPriority,
     modelCatalog: unlockedConfig.modelCatalog,
     deactivatedModels: unlockedConfig.deactivatedModels,
-    provider: 'NVIDIA',
+    provider: 'Gemini',
     appVersion: APP_VERSION,
     apiKey: getLocalApiKey(),
     // true quando a sessao esta desbloqueada mas ainda nao ha chave local salva
@@ -707,7 +708,7 @@ function registerIpc() {
   ipcMain.handle('export:apis', () => {
     if (!sessionPassword) return { ok: false, error: t('error.unlockFirst') };
     try {
-      const dir = path.join(electronApp.getPath('documents'), 'AgentBridge');
+      const dir = path.join(electronApp.getPath('documents'), DATA_DIR_NAME);
       const file = path.join(dir, 'api_keys.txt');
       const content = unlockedConfig.apiKeys.join('\n');
       mkdirSync(dir, { recursive: true });
@@ -748,7 +749,7 @@ function createMainWindow() {
 
 electronApp.setName(APP_NAME);
 function tokenUsagePath() {
-  return path.join(electronApp.getPath('documents'), 'AgentBridge', 'used_tokens.json');
+  return path.join(electronApp.getPath('documents'), DATA_DIR_NAME, 'used_tokens.json');
 }
 
 electronApp.on('before-quit', () => {

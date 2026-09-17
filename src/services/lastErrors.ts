@@ -7,6 +7,7 @@
 // O arquivo mantem sempre as 10 entradas mais recentes: cada novo erro
 // empurra o mais antigo para fora (FIFO).
 
+import { DATA_DIR_NAME } from '../config.ts';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import path from 'node:path';
@@ -23,7 +24,7 @@ export function setLastErrorDirectory(directory: string) {
 function lastErrorDirectory(): string {
   return configuredDirectory
     || process.env.AGENTBRIDGE_APIS_DIR
-    || path.join(homedir(), 'Documents', 'AgentBridge');
+    || path.join(homedir(), 'Documents', DATA_DIR_NAME);
 }
 
 function lastErrorPath(directory = lastErrorDirectory()): string {
