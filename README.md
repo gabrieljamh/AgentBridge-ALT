@@ -21,6 +21,11 @@ from OpenAI-compatible clients, Codex CLI, and Claude Code.
   Claude Code / Codex drop it, so the proxy caches signatures by tool-call id and
   re-injects them; if missing, it sends Google's `skip_thought_signature_validator`
   placeholder. Parallel Responses `function_call` items are merged into one turn.
+- **Key-level failures** (ported from AliveNPCs' `GeminiClient`): `API_KEY_INVALID` /
+  `UNAUTHENTICATED` or `FAILED_PRECONDITION` (billing/region) take that key out of
+  rotation for **all models** for 24 h and retry on another key — no model failover.
+  503 "high demand" is retried like a 500, then fails over to the next model.
+  Upstream error logs now show Gemini's own message instead of `Bad Request`.
 - **Data folder:** `Documents\AgentBridge-ALT\` (separate from the original app).
 - Headless env vars: `GEMINI_API_KEYS` (comma-separated) or `GEMINI_API_KEY`.
 

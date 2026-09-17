@@ -569,7 +569,7 @@ test('NVIDIA forwarding logs upstream HTTP errors', async () => {
   assert.equal(events.find((event) => event.type === 'upstream_error')?.status, 429);
   assert.equal(
     events.find((event) => event.type === 'upstream_error')?.message,
-    'Too Many Requests'
+    'rate limited' // corpo do provedor, nao o statusText
   );
   unsubscribe();
 });

@@ -6,7 +6,9 @@ import { clearRuntimeConfig, getRuntimeStatus, setRuntimeConfig } from '../servi
 import { forwardToNvidia } from '../services/nvidia.ts';
 import {
   SKIP_THOUGHT_SIGNATURE,
+  classifyKeyFailure,
   classifyRateLimitBody,
+  extractProviderMessage,
   clearToolCallExtras,
   msUntilNextPacificMidnight,
   withThoughtSignatures
@@ -205,4 +207,57 @@ test('Responses (Codex): function_calls paralelos viram um unico turno com assin
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+const invalidKeyBody = JSON.stringify([{
+  error: {
+    code: 400,
+    message: 'API key not valid. Please pass a valid API key.',
+    status: 'INVALID_ARGUMENT',
+    details: [{ '@type': 'type.googleapis.com/google.rpc.ErrorInfo', reason: 'API_KEY_INVALID' }]
+  }
+}]);
+
+test('classifica falhas de chave, billing e alta demanda', () => {
+  assert.equal(classifyKeyFailure(400, invalidKeyBody), 'invalid_key');
+  assert.equal(classifyKeyFailure(400, '{"error":{"status":"FAILED_PRECONDITION","message":"User location is not supported"}}'), 'billing');
+  assert.equal(classifyKeyFailure(503, '{"error":{"message":"The model is currently experiencing high demand."}}'), 'high_demand');
+  assert.equal(classifyKeyFailure(400, '{"error":{"message":"Invalid JSON payload"}}'), null);
+  assert.equal(extractProviderMessage(invalidKeyBody), 'INVALID_ARGUMENT: API key not valid. Please pass a valid API key.');
+});
+
+test('chave invalida sai do rodizio em todos os modelos e a request tenta outra chave', async () => {
+  clearRuntimeConfig();
+  setRuntimeConfig({ apiKeys: ['AIza-bad', 'AIza-good'] });
+  const seen: Array<{ auth: string; model: string }> = [];
+  const fakeFetch: typeof fetch = async (_url, init) => {
+    const auth = String((init?.headers as Record<string, string>)?.authorization);
+    const model = JSON.parse(String(init?.body)).model;
+    seen.push({ auth, model });
+    if (auth === 'Bearer AIza-bad') {
+      return new Response(invalidKeyBody, { status: 400, headers: { 'content-type': 'application/json' } });
+    }
+    return new Response(
+      'data: {"choices":[{"delta":{"content":"ok"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n',
+      { headers: { 'content-type': 'text/event-stream' } }
+    );
+  };
+  // Repete ate a chave ruim ser sorteada (a escolha inicial e aleatoria).
+  let response: Response | undefined;
+  for (let i = 0; i < 20 && !seen.some((row) => row.auth === 'Bearer AIza-bad'); i++) {
+    clearRuntimeConfig();
+    setRuntimeConfig({ apiKeys: ['AIza-bad', 'AIza-good'] });
+    seen.length = 0;
+    response = await forwardToNvidia({ model: 'gemini-3.8-flash', messages: [{ role: 'user', content: 'oi' }] }, fakeFetch, 0);
+  }
+  assert.ok(seen.some((row) => row.auth === 'Bearer AIza-bad'), 'chave ruim deveria ter sido sorteada');
+  assert.equal(response!.status, 200);
+  assert.ok(seen.every((row) => row.model === 'gemini-3.8-flash'), 'nao deve trocar de modelo por causa de chave invalida');
+  const bad = getRuntimeStatus().apiUsage.find((row) => row.apiNumber === 1)!;
+  assert.equal(bad.penalties[0].model, '*');
+
+  // Proxima request, outro modelo: a chave ruim nao e mais usada.
+  seen.length = 0;
+  await forwardToNvidia({ model: 'gemini-2.5-flash', messages: [{ role: 'user', content: 'oi' }] }, fakeFetch, 0);
+  assert.deepEqual(seen.map((row) => row.auth), ['Bearer AIza-good']);
 });

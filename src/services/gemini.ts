@@ -166,31 +166,76 @@ export function classifyRateLimitBody(raw: unknown, now = Date.now()): RateLimit
   return { scope: 'unknown', penaltyMs: RATE_LIMIT_MINUTE_PENALTY_MS, quotaId: quotaIds[0], message };
 }
 
-const rateLimitCache = new WeakMap<Response, Promise<RateLimitInfo>>();
+const errorTextCache = new WeakMap<Response, Promise<string>>();
 
-// Le (uma vez) o corpo do 429 e decide o castigo. Nunca lanca.
-export function inspectRateLimit(response: Response): Promise<RateLimitInfo> {
-  const cached = rateLimitCache.get(response);
+// Le (uma vez, via clone) o corpo de uma resposta de erro. Nunca lanca.
+export function readErrorText(response: Response): Promise<string> {
+  const cached = errorTextCache.get(response);
   if (cached) return cached;
-  const promise = (async (): Promise<RateLimitInfo> => {
-    const headerMs = parseRetryAfterHeader(response);
-    let text = '';
+  const promise = (async () => {
     try {
-      if (response.body && !response.bodyUsed && !response.body.locked) {
-        text = await Promise.race([
-          response.clone().text(),
-          new Promise<string>((resolve) => setTimeout(() => resolve(''), 2_000))
-        ]);
-      }
+      if (!response.body || response.bodyUsed || response.body.locked) return '';
+      return await Promise.race([
+        response.clone().text(),
+        new Promise<string>((resolve) => setTimeout(() => resolve(''), 2_000))
+      ]);
     } catch {
-      text = '';
+      return '';
     }
-    const info = classifyRateLimitBody(text);
-    if (info.scope === 'unknown' && headerMs !== undefined) {
-      return { ...info, scope: 'minute', penaltyMs: headerMs };
-    }
-    return info;
   })();
-  rateLimitCache.set(response, promise);
+  errorTextCache.set(response, promise);
   return promise;
+}
+
+export async function inspectRateLimit(response: Response): Promise<RateLimitInfo> {
+  const headerMs = parseRetryAfterHeader(response);
+  const info = classifyRateLimitBody(await readErrorText(response));
+  if (info.scope === 'unknown' && headerMs !== undefined) {
+    return { ...info, scope: 'minute', penaltyMs: headerMs };
+  }
+  return info;
+}
+
+// ---------------------------------------------------------------------------
+// Falhas que nao sao do modelo (inspirado no GeminiClient do AliveNPCs)
+// ---------------------------------------------------------------------------
+
+export type KeyFailure = 'invalid_key' | 'billing' | 'high_demand';
+
+// Chave invalida: o Gemini responde 400 INVALID_ARGUMENT tao frequentemente quanto
+// 401, entao o corpo precisa ser consultado antes do status.
+export function classifyKeyFailure(status: number, bodyText: string): KeyFailure | null {
+  const body = bodyText || '';
+  if (/API_KEY_INVALID|API key not valid|invalid authentication credentials|UNAUTHENTICATED|ACCESS_TOKEN_TYPE_UNSUPPORTED|API_KEY_SERVICE_BLOCKED/i.test(body)
+    || (status === 401 && !body.trim())) {
+    return 'invalid_key';
+  }
+  // FAILED_PRECONDITION = free tier indisponivel no pais / billing necessario.
+  if (status !== 429 && /FAILED_PRECONDITION|enable billing|billing account/i.test(body)) return 'billing';
+  if (status >= 500 && /currently experiencing high demand|Spikes in demand are usually temporary|overloaded/i.test(body)) {
+    return 'high_demand';
+  }
+  return null;
+}
+
+// Mensagem legivel do provedor para logs ("Bad Request" nao ajuda ninguem).
+export function extractProviderMessage(bodyText: string): string | undefined {
+  if (!bodyText) return undefined;
+  try {
+    let payload: any = JSON.parse(bodyText);
+    if (Array.isArray(payload)) payload = payload[0];
+    const error = payload?.error ?? payload;
+    const message = typeof error?.message === 'string' ? error.message : undefined;
+    const status = typeof error?.status === 'string' ? error.status : undefined;
+    if (message) return status ? `${status}: ${message}` : message;
+  } catch {
+    // corpo nao-JSON
+  }
+  const trimmed = bodyText.trim();
+  return trimmed ? trimmed.slice(0, 300) : undefined;
+}
+
+export async function describeUpstreamError(response: Response): Promise<string> {
+  const text = await readErrorText(response);
+  return extractProviderMessage(text) || response.statusText || `Gemini HTTP ${response.status}`;
 }

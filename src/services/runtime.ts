@@ -475,9 +475,33 @@ function resetExpiredWindow(state: ApiKeyState, timestamp: number) {
 }
 
 // A chave esta de castigo PARA ESTE MODELO? Outros modelos seguem livres.
+// Castigo de chave inteira (todos os modelos): chave invalida ou sem billing.
+export const ALL_MODELS_PENALTY_KEY = '*';
+
 function isResting(state: ApiKeyState, timestamp: number, model?: string) {
-  const penalty = state.penalties.get(modelKey(model));
+  const penalty = state.penalties.get(modelKey(model)) ?? state.penalties.get(ALL_MODELS_PENALTY_KEY);
   return penalty !== undefined && penalty.penaltyUntil > timestamp;
+}
+
+// Tira a chave do rodizio em TODOS os modelos (ex.: API_KEY_INVALID). Diferente do
+// 429, nao adianta trocar de modelo: o problema e a chave.
+export function markApiKeyDisabled(input: { apiNumber: number; durationMs: number; timestamp?: number }) {
+  const timestamp = input.timestamp ?? Date.now();
+  const state = apiKeyStates[input.apiNumber - 1];
+  if (!state || !(input.durationMs > 0)) return;
+  const penaltyUntil = timestamp + input.durationMs;
+  state.penalties.set(ALL_MODELS_PENALTY_KEY, { penaltyStartedAt: timestamp, penaltyUntil, successesBefore429: 0 });
+  for (const [model, cursor] of modelCursors) {
+    if (cursor === input.apiNumber - 1) modelCursors.delete(model);
+  }
+  const event: ApiKeyPenaltyEvent = { apiNumber: input.apiNumber, model: ALL_MODELS_PENALTY_KEY, penaltyStartedAt: timestamp, penaltyUntil, successesBefore429: 0 };
+  penaltyListeners.forEach((listener) => {
+    try {
+      listener(event);
+    } catch {
+      // Observadores de interface nao podem interromper o encaminhamento.
+    }
+  });
 }
 
 // Lista os castigos ativos da chave (um por modelo), do mais cedo ao mais tarde.
@@ -942,7 +966,7 @@ export async function acquireApiKey(options: AcquireApiKeyOptions = {}) {
       const state = apiKeyStates[index];
       resetExpiredWindow(state, timestamp);
       if (isResting(state, timestamp, model)) {
-        const penalty = state.penalties.get(key);
+        const penalty = state.penalties.get(key) ?? state.penalties.get(ALL_MODELS_PENALTY_KEY);
         if (penalty) {
           shortestPenaltyWaitMs = Math.min(
             shortestPenaltyWaitMs,
