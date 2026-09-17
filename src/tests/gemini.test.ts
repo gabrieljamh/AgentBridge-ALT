@@ -266,14 +266,14 @@ test('chave invalida sai do rodizio em todos os modelos e a request tenta outra 
 const highDemandBody = JSON.stringify([{ error: { code: 503, status: 'UNAVAILABLE', message: 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.' } }]);
 const okSse = 'data: {"choices":[{"delta":{"content":"ok"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n';
 
-test('503 high demand com uma chave so: backoff e nova tentativa no mesmo modelo', async () => {
+test('503 high demand com uma chave so: uma nova tentativa no mesmo modelo', async () => {
   clearRuntimeConfig();
   setRuntimeConfig({ apiKeys: ['AIza-single'] });
   let calls = 0;
   const sleeps: number[] = [];
   const fakeFetch: typeof fetch = async () => {
     calls++;
-    if (calls <= 2) return new Response(highDemandBody, { status: 503, headers: { 'content-type': 'application/json' } });
+    if (calls <= 1) return new Response(highDemandBody, { status: 503, headers: { 'content-type': 'application/json' } });
     return new Response(okSse, { headers: { 'content-type': 'text/event-stream' } });
   };
   const response = await forwardToNvidia(
@@ -281,8 +281,8 @@ test('503 high demand com uma chave so: backoff e nova tentativa no mesmo modelo
     fakeFetch, 0, { sleep: async (ms) => { sleeps.push(ms); } }
   );
   assert.equal(response.status, 200);
-  assert.equal(calls, 3);
-  assert.deepEqual(sleeps, [1_500, 4_000]);
+  assert.equal(calls, 2);
+  assert.deepEqual(sleeps, [2_000]);
   assert.equal(getRuntimeStatus().apiUsage[0].resting, false, 'alta demanda nao castiga a chave');
 });
 
@@ -302,7 +302,7 @@ test('503 high demand persistente troca de modelo no modo automatico', async () 
     { resolveModel: (exhausted) => (exhausted.includes('gemini-3.5-flash-lite') ? null : 'gemini-3.5-flash-lite') }
   );
   assert.equal(response.status, 200);
-  assert.deepEqual(models, ['gemini-3.8-flash', 'gemini-3.8-flash', 'gemini-3.8-flash', 'gemini-3.5-flash-lite']);
+  assert.deepEqual(models, ['gemini-3.8-flash', 'gemini-3.8-flash', 'gemini-3.5-flash-lite'], 'no maximo 2 tentativas (contam no RPM) antes de trocar');
 });
 
 test('429 com limit: 0 marca o modelo como indisponivel no tier por 24h', () => {
@@ -326,4 +326,20 @@ test('quando todas as chaves estao de castigo, a resposta explica o motivo do Ge
   const payload = await second.json();
   assert.match(payload.error.message, /sem cota neste tier/);
   assert.match(payload.error.message, /limit: 0/);
+});
+
+test('503 high demand persistente em modo manual devolve 503 apos 2 tentativas', async () => {
+  clearRuntimeConfig();
+  setRuntimeConfig({ apiKeys: ['AIza-single'] });
+  let calls = 0;
+  const fakeFetch: typeof fetch = async () => {
+    calls++;
+    return new Response(highDemandBody, { status: 503, headers: { 'content-type': 'application/json' } });
+  };
+  const response = await forwardToNvidia(
+    { model: 'gemini-3.7-flash', messages: [{ role: 'user', content: 'oi' }] },
+    fakeFetch, 0, { sleep: async () => {} }
+  );
+  assert.equal(response.status, 503);
+  assert.equal(calls, 2);
 });

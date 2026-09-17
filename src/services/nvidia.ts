@@ -122,7 +122,10 @@ const EMPTY_RESPONSE_MAX_RETRIES = 3;
 const MAX_500_RETRIES = 3;
 // Gemini "high demand" (503 UNAVAILABLE): e do modelo, nao da chave. Tenta de novo
 // no MESMO modelo com backoff (mesmo com uma chave so) antes de trocar de modelo.
-const HIGH_DEMAND_BACKOFF_MS = [1_500, 4_000, 8_000];
+const HIGH_DEMAND_BACKOFF_MS = [2_000];
+// Tentativas falhas CONTAM no RPM do Gemini (confirmado: free tier Flash = 5 RPM).
+// Por isso so 2 tentativas por modelo em alta demanda antes de trocar de modelo.
+const HIGH_DEMAND_MAX_TRIES = 2;
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 const DEFAULT_STREAM_KEEP_ALIVE_MS = 5_000;
 const SSE_BUFFER_MAX_LENGTH = 65_536;
@@ -1116,7 +1119,7 @@ export async function forwardToNvidia(
         const shouldFailover =
           response.status === 429 || response.status === 404 ||
           (response.status === 400 && !keyFailure) ||
-          (retryableServerError && http500State.count >= MAX_500_RETRIES);
+          (retryableServerError && http500State.count >= (keyFailure === 'high_demand' ? HIGH_DEMAND_MAX_TRIES : MAX_500_RETRIES));
 
         if (shouldFailover && options.resolveModel) {
           const previousModel = activeModel;
@@ -1130,7 +1133,7 @@ export async function forwardToNvidia(
             const reason = response.status === 429
               ? 'todas as APIs em castigo 429'
               : retryableServerError
-                ? `modelo em erro HTTP ${response.status}${keyFailure === 'high_demand' ? ' (alta demanda)' : ''} apos ${MAX_500_RETRIES} tentativas`
+                ? `modelo em erro HTTP ${response.status}${keyFailure === 'high_demand' ? ' (alta demanda)' : ''} apos ${keyFailure === 'high_demand' ? HIGH_DEMAND_MAX_TRIES : MAX_500_RETRIES} tentativas`
                 : `modelo recusado (HTTP ${response.status})`;
             markApiModelSwitch({ from: previousModel, to: nextModel, apiNumber, reason, timestamp: now() });
             activeModel = nextModel;
@@ -1141,14 +1144,14 @@ export async function forwardToNvidia(
             continue;
           }
         }
-        if (keyFailure === 'high_demand' && http500State.count < MAX_500_RETRIES) {
+        if (keyFailure === 'high_demand' && http500State.count < HIGH_DEMAND_MAX_TRIES) {
           const waitMs = HIGH_DEMAND_BACKOFF_MS[Math.min(http500State.count - 1, HIGH_DEMAND_BACKOFF_MS.length - 1)];
           markApiDelayWaiting({ apiNumber, delayMs: waitMs, attempt, timestamp: now() });
           await (rateLimitOptions.sleep || defaultSleep)(waitMs);
           attempt = 0; // nao consome tentativas de chave: o problema nao e a chave
           continue;
         }
-        if (retryableServerError && http500State.count < MAX_500_RETRIES && attempt < maxAttempts) {
+        if (response.status === 500 && keyFailure !== 'high_demand' && http500State.count < MAX_500_RETRIES && attempt < maxAttempts) {
           continue;
         }
         return responseFromUpstream(response);
