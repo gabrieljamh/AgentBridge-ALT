@@ -532,7 +532,7 @@ async function apisScreen(): Promise<void> {
         header: sectionHeader(t('apis.addTitle'), t('apis.addPrompt')),
         label: t('apis.apiKeyLabel'),
         mask: true,
-        placeholder: 'AIza...',
+        placeholder: 'AQ.... (auth key)',
         validate: (v) => (/^\S{20,}$/.test(v.trim()) ? null : t('apis.mustStartWith'))
       });
       if (value && value.trim()) {
@@ -575,7 +575,7 @@ async function apisScreen(): Promise<void> {
           header: sectionHeader(t('apis.replaceTitle'), ''),
           label: t('apis.newKeyLabel'),
           mask: true,
-          placeholder: 'AIza...',
+          placeholder: 'AQ.... (auth key)',
           validate: (v) => (/^\S{20,}$/.test(v.trim()) ? null : t('apis.mustStartWith'))
         });
         if (value && value.trim()) {

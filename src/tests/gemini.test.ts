@@ -223,6 +223,7 @@ test('classifica falhas de chave, billing e alta demanda', () => {
   assert.equal(classifyKeyFailure(400, '{"error":{"status":"FAILED_PRECONDITION","message":"User location is not supported"}}'), 'billing');
   assert.equal(classifyKeyFailure(503, '{"error":{"message":"The model is currently experiencing high demand."}}'), 'high_demand');
   assert.equal(classifyKeyFailure(400, '{"error":{"message":"Invalid JSON payload"}}'), null);
+  assert.equal(classifyKeyFailure(403, '{"error":{"status":"PERMISSION_DENIED","message":"Requests from unrestricted API keys are blocked."}}'), 'invalid_key');
   assert.equal(extractProviderMessage(invalidKeyBody), 'INVALID_ARGUMENT: API key not valid. Please pass a valid API key.');
 });
 

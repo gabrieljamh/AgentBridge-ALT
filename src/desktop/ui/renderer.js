@@ -373,7 +373,7 @@ function addApiField(value = '', existingIndex = null) {
   const input = document.createElement('input');
   input.type = 'password';
   input.placeholder = existingIndex === null
-    ? 'AIza...'
+    ? 'AQ.... (auth key)'
     : `API salva ${existingIndex + 1} - deixe vazio para manter`;
   input.autocomplete = 'off';
   input.value = value;

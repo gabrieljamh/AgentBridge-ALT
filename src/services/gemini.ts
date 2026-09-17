@@ -206,7 +206,7 @@ export type KeyFailure = 'invalid_key' | 'billing' | 'high_demand';
 // 401, entao o corpo precisa ser consultado antes do status.
 export function classifyKeyFailure(status: number, bodyText: string): KeyFailure | null {
   const body = bodyText || '';
-  if (/API_KEY_INVALID|API key not valid|invalid authentication credentials|UNAUTHENTICATED|ACCESS_TOKEN_TYPE_UNSUPPORTED|API_KEY_SERVICE_BLOCKED/i.test(body)
+  if (/API_KEY_INVALID|API key not valid|invalid authentication credentials|UNAUTHENTICATED|ACCESS_TOKEN_TYPE_UNSUPPORTED|API_KEY_SERVICE_BLOCKED|unrestricted (api )?key|standard (api )?keys? (is|are) (no longer supported|not supported|rejected)|key (has been|is) blocked/i.test(body)
     || (status === 401 && !body.trim())) {
     return 'invalid_key';
   }

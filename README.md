@@ -10,7 +10,11 @@ from OpenAI-compatible clients, Codex CLI, and Claude Code.
 
 - **Upstream:** `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`
   (override with `AGENTBRIDGE_ALT_UPSTREAM_URL`).
-- **Keys:** AI Studio keys (`aistudio.google.com/apikey`). Gemini rate limits are
+- **Keys:** AI Studio **auth keys** (`AQ.…`, from `aistudio.google.com/apikey`). Per the
+  [AI Studio key docs](https://aistudio.google.com/docs/api-key), new keys are auth keys
+  since May 28 2026, unrestricted standard keys are rejected, and standard (`AIza…`) keys
+  stop working in September 2026. AI Studio creates at most 10 projects at a time.
+  Keys the API rejects (invalid / blocked / unrestricted) are taken out of rotation. Gemini rate limits are
   **per project**, so register **one key per project** — extra keys in the same
   project add no capacity.
 - **Smarter 429 penalties:** the `RESOURCE_EXHAUSTED` body is parsed. Daily quota
