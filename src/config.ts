@@ -1,9 +1,12 @@
-export const APP_NAME = 'AgentBridge';
+// Nome diferente do AgentBridge original: o Electron usa este nome para a pasta
+// %APPDATA% (cache/localStorage), entao as duas instalacoes nao se misturam.
+export const APP_NAME = 'AgentBridge ALT';
 // Pasta em Documents/. Diferente do AgentBridge original para nao misturar vaults.
 export const DATA_DIR_NAME = 'AgentBridge-ALT';
 export const APP_VERSION = '4.5.0';
 export const INTERNAL_API_KEY = 'EuAmoORyo';
-export const DEFAULT_PORT = 3000;
+// 3001 para poder rodar ao lado do AgentBridge original (3000).
+export const DEFAULT_PORT = 3001;
 // Modelo NVIDIA padrao para onde o proxy redireciona qualquer chamada quando o
 // usuario ainda nao escolheu nenhum dentro do app. O redirecionamento e SEMPRE
 // ativo: o cliente pode mandar "AgentBridge", "gpt-5" ou qualquer coisa que o
@@ -52,8 +55,8 @@ export const DEFAULT_AUTO_TOGGLE = false; // alternancia automatica de modelo
 // e sempre substituido pelo modelo selecionado no proxy.
 export const FIXED_CLIENT_MODEL = 'AgentBridge';
 // Endpoint OpenAI-compativel do Gemini (AI Studio). Pode ser sobrescrito por
-// AGENTBRIDGE_UPSTREAM_URL para testar outro provedor compativel.
-export const UPSTREAM_CHAT_URL = process.env.AGENTBRIDGE_UPSTREAM_URL
+// AGENTBRIDGE_ALT_UPSTREAM_URL para testar outro provedor compativel.
+export const UPSTREAM_CHAT_URL = process.env.AGENTBRIDGE_ALT_UPSTREAM_URL
   || 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
 export const REQUEST_DELAY_MS = 0;
 // So telemetria (nao ha throttle local). Limites reais do Gemini variam por

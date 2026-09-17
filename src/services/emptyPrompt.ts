@@ -29,7 +29,7 @@ export function setEmptyPromptDirectory(directory: string) {
 
 function emptyPromptDirectory(): string {
   return configuredDirectory
-    || process.env.AGENTBRIDGE_APIS_DIR
+    || process.env.AGENTBRIDGE_ALT_DATA_DIR
     || path.join(homedir(), 'Documents', DATA_DIR_NAME);
 }
 

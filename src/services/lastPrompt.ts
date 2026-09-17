@@ -19,7 +19,7 @@ const MAX_ENTRIES = 10;
 
 // Diretorio onde ficam as APIs. No app desktop, main.ts chama
 // setLastPromptDirectory() com o caminho exato do Electron (getPath('documents')).
-// Em modo standalone, cai no padrao homedir()/Documents/AgentBridge.
+// Em modo standalone, cai no padrao homedir()/Documents/AgentBridge-ALT.
 let configuredDirectory: string | null = null;
 
 export function setLastPromptDirectory(directory: string) {
@@ -28,7 +28,7 @@ export function setLastPromptDirectory(directory: string) {
 
 function lastPromptDirectory(): string {
   return configuredDirectory
-    || process.env.AGENTBRIDGE_APIS_DIR
+    || process.env.AGENTBRIDGE_ALT_DATA_DIR
     || path.join(homedir(), 'Documents', DATA_DIR_NAME);
 }
 

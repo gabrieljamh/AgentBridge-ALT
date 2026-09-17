@@ -9,7 +9,7 @@ const previewStatus = {
   requestDelayMs: 0,
   apiUsage: [],
   usageLog: [],
-  port: 3000,
+  port: 3001,
   selectedModel: 'deepseek-ai/deepseek-v4-pro',
   autoToggle: false,
   activeModel: 'deepseek-ai/deepseek-v4-pro',
@@ -23,11 +23,11 @@ const previewStatus = {
   appVersion: '4.5.0',
   apiKey: 'EuAmoORyo',
   needLocalKey: false,
-  codexBaseUrl: 'http://localhost:3000/v1',
-  claudeBaseUrl: 'http://localhost:3000',
-  responsesEndpoint: 'http://localhost:3000/v1/responses',
-  messagesEndpoint: 'http://localhost:3000/v1/messages',
-  chatEndpoint: 'http://localhost:3000/v1/chat/completions',
+  codexBaseUrl: 'http://localhost:3001/v1',
+  claudeBaseUrl: 'http://localhost:3001',
+  responsesEndpoint: 'http://localhost:3001/v1/responses',
+  messagesEndpoint: 'http://localhost:3001/v1/messages',
+  chatEndpoint: 'http://localhost:3001/v1/chat/completions',
   configPath: 'Documentos\\AgentBridge\\config.json',
   penaltyPath: 'Documentos\\AgentBridge\\penalties.json',
   locale: 'pt-BR',
@@ -104,16 +104,16 @@ function stateLabel(state) {
 function codexSnippet(status) {
   return [
     'model = "AgentBridge"',
-    'model_provider = "agentbridge"',
+    'model_provider = "agentbridge-alt"',
     '',
-    '[model_providers.agentbridge]',
+    '[model_providers.agentbridge-alt]',
     'name = "Gemini via AgentBridge"',
     `base_url = "${status.codexBaseUrl}"`,
     'wire_api = "responses"',
-    'env_key = "AGENTBRIDGE_API_KEY"',
+    'env_key = "AGENTBRIDGE_ALT_API_KEY"',
     '',
     '# PowerShell',
-    `$env:AGENTBRIDGE_API_KEY="${status.apiKey}"`
+    `$env:AGENTBRIDGE_ALT_API_KEY="${status.apiKey}"`
   ].join('\n');
 }
 

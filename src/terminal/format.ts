@@ -70,21 +70,21 @@ export type Shell = 'bash' | 'powershell';
 export function codexConfigToml(baseUrl: string): string {
   return [
     'model = "AgentBridge"',
-    'model_provider = "agentbridge"',
+    'model_provider = "agentbridge-alt"',
     '',
-    '[model_providers.agentbridge]',
+    '[model_providers.agentbridge-alt]',
     'name = "Gemini via AgentBridge"',
     `base_url = "${baseUrl}/v1"`,
     'wire_api = "responses"',
-    'env_key = "AGENTBRIDGE_API_KEY"'
+    'env_key = "AGENTBRIDGE_ALT_API_KEY"'
   ].join('\n');
 }
 
 // Variavel de ambiente do Codex, ja no formato do shell escolhido.
 export function codexEnv(apiKey: string, shell: Shell): string {
   return shell === 'powershell'
-    ? `$env:AGENTBRIDGE_API_KEY="${apiKey}"`
-    : `export AGENTBRIDGE_API_KEY="${apiKey}"`;
+    ? `$env:AGENTBRIDGE_ALT_API_KEY="${apiKey}"`
+    : `export AGENTBRIDGE_ALT_API_KEY="${apiKey}"`;
 }
 
 // Bloco completo do Claude Code para um shell especifico (cole e ja inicia).

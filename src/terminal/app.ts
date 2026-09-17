@@ -1348,8 +1348,8 @@ async function codexScreen(): Promise<void> {
       header: sectionHeader(t('integration.codex'), t('integration.configTomlDesc')),
       items: [
         { label: t('integration.codexToml'), value: 'toml', hint: c.faint('[model_providers]') },
-        { label: t('integration.codexBash'), value: 'bash', hint: c.faint('export AGENTBRIDGE_API_KEY=...') },
-        { label: t('integration.codexPwsh'), value: 'pwsh', hint: c.faint('$env:AGENTBRIDGE_API_KEY=...') },
+        { label: t('integration.codexBash'), value: 'bash', hint: c.faint('export AGENTBRIDGE_ALT_API_KEY=...') },
+        { label: t('integration.codexPwsh'), value: 'pwsh', hint: c.faint('$env:AGENTBRIDGE_ALT_API_KEY=...') },
         { label: c.muted(t('integration.back')), value: 'back' }
       ]
     });

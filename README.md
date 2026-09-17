@@ -9,7 +9,7 @@ from OpenAI-compatible clients, Codex CLI, and Claude Code.
 ### What's different from upstream
 
 - **Upstream:** `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`
-  (override with `AGENTBRIDGE_UPSTREAM_URL`).
+  (override with `AGENTBRIDGE_ALT_UPSTREAM_URL`).
 - **Keys:** AI Studio keys (`aistudio.google.com/apikey`). Gemini rate limits are
   **per project**, so register **one key per project** — extra keys in the same
   project add no capacity.
@@ -26,7 +26,12 @@ from OpenAI-compatible clients, Codex CLI, and Claude Code.
   rotation for **all models** for 24 h and retry on another key — no model failover.
   503 "high demand" is retried like a 500, then fails over to the next model.
   Upstream error logs now show Gemini's own message instead of `Bad Request`.
-- **Data folder:** `Documents\AgentBridge-ALT\` (separate from the original app).
+- **Side-by-side with the original AgentBridge:** nothing is shared.
+  - Vault / keys / penalties / token usage: `Documents\AgentBridge-ALT\` (override with `AGENTBRIDGE_ALT_DATA_DIR`)
+  - Electron app data (`%APPDATA%`): `AgentBridge ALT`; installer appId `com.gabrieljamh.agentbridge.alt`
+  - Default port **3001** (original uses 3000)
+  - Codex provider `agentbridge-alt` with `env_key = "AGENTBRIDGE_ALT_API_KEY"`
+  - Env vars prefixed `AGENTBRIDGE_ALT_` (`_LOCAL_KEY`, `_UPSTREAM_URL`, `_DATA_DIR`)
 - Headless env vars: `GEMINI_API_KEYS` (comma-separated) or `GEMINI_API_KEY`.
 
 ## Desktop
@@ -73,10 +78,10 @@ Start Menu shortcuts. The generated executable is at
 
 - **Authentication**: the **local key** you define (factory default is
   `EuAmoORyo` until you set your own). See [Local key](#local-key-client-authentication).
-- Chat Completions: `http://localhost:3000/v1/chat/completions`
-- Responses: `http://localhost:3000/v1/responses`
-- Anthropic Messages: `http://localhost:3000/v1/messages`
-- Health: `http://localhost:3000/health`
+- Chat Completions: `http://localhost:3001/v1/chat/completions`
+- Responses: `http://localhost:3001/v1/responses`
+- Anthropic Messages: `http://localhost:3001/v1/messages`
+- Health: `http://localhost:3001/health`
 
 Requests are automatically distributed across keys to stay within 35 RPM without
 creating long bursts. The default extra delay is 0 ms.
@@ -105,7 +110,7 @@ Example of selecting a specific model:
 
 ```bash
 # replace "EuAmoORyo" with your local key if you have set one
-curl http://localhost:3000/v1/chat/completions \
+curl http://localhost:3001/v1/chat/completions \
   -H "Authorization: Bearer EuAmoORyo" \
   -H "Content-Type: application/json" \
   -d '{"model":"moonshotai/kimi-k2.6","messages":[{"role":"user","content":"hi"}]}'

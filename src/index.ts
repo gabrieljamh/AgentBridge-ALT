@@ -709,7 +709,7 @@ export async function startStandaloneServer() {
     .filter(Boolean);
   // Permite sobrescrever a chave local exigida dos clientes pelo ambiente, sem
   // precisar do cofre criptografado. Vazio mantem a padrao do config.
-  const localApiKey = (process.env.AGENTBRIDGE_LOCAL_KEY || '').trim();
+  const localApiKey = (process.env.AGENTBRIDGE_ALT_LOCAL_KEY || '').trim();
   setRuntimeConfig({
     apiKeys,
     port: Number(process.env.PORT) || DEFAULT_PORT,
