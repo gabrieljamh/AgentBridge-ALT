@@ -343,3 +343,27 @@ test('503 high demand persistente em modo manual devolve 503 apos 2 tentativas',
   assert.equal(response.status, 503);
   assert.equal(calls, 2);
 });
+
+test('429 so com mensagem: limite 20 em modelo Flash = cota diaria', () => {
+  const body = JSON.stringify([{ error: { code: 429, status: 'RESOURCE_EXHAUSTED',
+    message: 'You exceeded your current quota. * Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash Please retry in 41.5s.' } }]);
+  const info = classifyRateLimitBody(body, Date.parse('2026-09-17T15:00:00Z'));
+  assert.equal(info.scope, 'daily');
+  assert.ok(info.penaltyMs > 60 * 60_000);
+});
+
+test('429 so com mensagem: limite 5 em modelo Flash = cota por minuto com retry da mensagem', () => {
+  const body = JSON.stringify([{ error: { code: 429, status: 'RESOURCE_EXHAUSTED',
+    message: 'Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 5, model: gemini-3.6-flash Please retry in 12.3s.' } }]);
+  const info = classifyRateLimitBody(body);
+  assert.equal(info.scope, 'minute');
+  assert.equal(info.penaltyMs, 12_300);
+});
+
+test('429 so com mensagem: Flash-Lite 500 = diario, tokens por minuto = minuto', () => {
+  const lite = classifyRateLimitBody(JSON.stringify({ error: { message: 'Quota exceeded for metric: x/generate_content_free_tier_requests, limit: 500, model: gemini-3.1-flash-lite' } }));
+  assert.equal(lite.scope, 'daily');
+  const tpm = classifyRateLimitBody(JSON.stringify({ error: { message: 'Quota exceeded for metric: x/generate_content_free_tier_input_token_count, limit: 250000, model: gemini-3.6-flash Please retry in 20s.' } }));
+  assert.equal(tpm.scope, 'minute');
+  assert.equal(tpm.penaltyMs, 20_000);
+});

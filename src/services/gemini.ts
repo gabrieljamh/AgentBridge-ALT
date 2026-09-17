@@ -13,7 +13,7 @@
 //    e RetryInfo (retryDelay). Limite diario => castigo ate meia-noite do
 //    Pacifico; limite por minuto => retryDelay (ou 60s).
 
-import { RATE_LIMIT_MINUTE_PENALTY_MS } from '../config.ts';
+import { RATE_LIMIT_MINUTE_PENALTY_MS, modelLimitsFor } from '../config.ts';
 
 // Modelo com cota 0 no tier da chave: fora do rodizio por 24h.
 export const UNAVAILABLE_MODEL_PENALTY_MS = 24 * 60 * 60_000;
@@ -182,7 +182,26 @@ export function classifyRateLimitBody(raw: unknown, now = Date.now()): RateLimit
     if (type.endsWith('RetryInfo')) retryMs = parseDurationMs(detail.retryDelay) ?? retryMs;
   }
 
-  const haystack = [...quotaIds, message || ''].join(' ');
+  // O endpoint OpenAI-compativel pode mandar so a mensagem, sem `details`. Ela traz
+  // "Quota exceeded for metric: <metrica>, limit: <N>, model: <modelo>" e "Please
+  // retry in 32.2s". Como a metrica de requests e a mesma para minuto e dia, o que
+  // separa os dois e o NUMERO: comparamos N com os limites conhecidos do modelo
+  // (Flash: 5 RPM / 20 RPD; Flash-Lite: 15 RPM / 500 RPD).
+  let messageScope: 'daily' | 'minute' | undefined;
+  for (const match of (message || '').matchAll(/metric:\s*([^,\s]+),\s*limit:\s*(\d+)(?:,\s*model:\s*([\w.\-\/]+))?/gi)) {
+    const [, metric, limitText, model] = match;
+    const limit = Number(limitText);
+    if (limit === 0) continue;
+    if (/token/i.test(metric)) { messageScope = messageScope || 'minute'; continue; }
+    const known = model ? modelLimitsFor(model) : undefined;
+    if (known && limit === known.rpd && known.rpd !== known.rpm) messageScope = 'daily';
+    else if (known && limit === known.rpm) messageScope = messageScope || 'minute';
+  }
+  if (retryMs === undefined) {
+    const hint = (message || '').match(/retry in\s+(\d+(?:\.\d+)?)\s*s/i);
+    if (hint) retryMs = Math.ceil(Number(hint[1]) * 1000);
+  }
+  const haystack = [...quotaIds, message || '', messageScope === 'daily' ? 'PerDay' : messageScope === 'minute' ? 'PerMinute' : ''].join(' ');
   // "Quota exceeded for metric: ..., limit: 0" => o modelo nao existe neste tier;
   // nao adianta tentar de novo em 1 minuto nem a meia-noite.
   const zeroLimit = /\blimit:\s*0\b/i.test(message || '')
