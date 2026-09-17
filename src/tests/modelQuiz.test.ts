@@ -68,3 +68,16 @@ test('quiz: upstream error surfaces provider message', async () => {
   assert.equal(outcome.ok, false);
   if (!outcome.ok) assert.equal(outcome.error, 'HTTP 429 - RESOURCE_EXHAUSTED: limit: 0');
 });
+
+test('quiz: tool call written as text (Nemotron style) grades answers but fails tool_call', () => {
+  const content = '[[{"name": "submit_answers", "parameters": {"arithmetic": "379", "brick": "2", "code": "9", "count": "6", "reverse": "EGDIRB"}}]';
+  const grade = gradeQuizCompletion({ choices: [{ message: { content } }] });
+  assert.equal(grade.toolCall, false);
+  assert.equal(grade.score, 5);
+});
+
+test('quiz: arguments as a JSON string inside a text tool call are unwrapped', () => {
+  const content = 'Sure! {"name":"submit_answers","arguments":"{\\"arithmetic\\":\\"379\\",\\"brick\\":\\"2\\",\\"code\\":\\"9\\",\\"count\\":\\"6\\",\\"reverse\\":\\"EGDIRB\\"}"}';
+  const grade = gradeQuizCompletion({ choices: [{ message: { content } }] });
+  assert.equal(grade.score, 5);
+});

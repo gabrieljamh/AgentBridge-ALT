@@ -63,17 +63,47 @@ export type QuizGrade = {
   raw: string;
 };
 
+// Procura as respostas do quiz dentro de um valor JSON qualquer. Aceita o objeto
+// direto ({ arithmetic, ... }) e tambem tool calls "escritas como texto" por modelos
+// que nao usam o formato nativo, ex.: [[{"name":"submit_answers","parameters":{...}}]]
+// (Nemotron) ou {"name":..., "arguments":"{...}"}.
+function findAnswers(value: unknown, depth = 0): Record<string, unknown> | undefined {
+  if (depth > 6 || value === null || value === undefined) return undefined;
+  if (typeof value === 'string') {
+    try { return findAnswers(JSON.parse(value), depth + 1); } catch { return undefined; }
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findAnswers(item, depth + 1);
+      if (found) return found;
+    }
+    return undefined;
+  }
+  if (typeof value !== 'object') return undefined;
+  const record = value as Record<string, unknown>;
+  if (QUIZ_QUESTIONS.some((q) => q.id in record)) return record;
+  for (const key of ['parameters', 'arguments', 'args', 'input', 'function']) {
+    if (key in record) {
+      const found = findAnswers(record[key], depth + 1);
+      if (found) return found;
+    }
+  }
+  return undefined;
+}
+
 function parseJsonObject(text: string): Record<string, unknown> | undefined {
   if (!text) return undefined;
   const unfenced = text.replace(/```(?:json)?/gi, '').trim();
   const candidates = [unfenced];
-  const start = unfenced.indexOf('{');
-  const end = unfenced.lastIndexOf('}');
-  if (start >= 0 && end > start) candidates.push(unfenced.slice(start, end + 1));
+  for (const [open, close] of [['[', ']'], ['{', '}']]) {
+    const start = unfenced.indexOf(open);
+    const end = unfenced.lastIndexOf(close);
+    if (start >= 0 && end > start) candidates.push(unfenced.slice(start, end + 1));
+  }
   for (const candidate of candidates) {
     try {
-      const parsed = JSON.parse(candidate);
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
+      const found = findAnswers(JSON.parse(candidate));
+      if (found) return found;
     } catch {
       // tenta o proximo candidato
     }
