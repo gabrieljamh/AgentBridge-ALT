@@ -10,6 +10,7 @@ import {
   getApiKeyCount,
   getRequestDelayMs,
   markApiRateLimited,
+  markModelRetired,
   reserveSendSlot,
   markApiModelSwitch,
   markHedgedModelSwitch,
@@ -1061,7 +1062,7 @@ export async function forwardToNvidia(
         if (activeModel) exhaustedModels.push(activeModel);
         const nextModel = options.resolveModel(exhaustedModels.slice());
         if (nextModel && !exhaustedModels.includes(nextModel)) {
-          markApiModelSwitch({ from: previousModel, to: nextModel, reason: error?.dailyBudget ? 'limite diario esgotado em todas as APIs' : 'todas as APIs em castigo 429', timestamp: now() });
+          markApiModelSwitch({ from: previousModel, to: nextModel, reason: error?.retired ? 'modelo aposentado (HTTP 410)' : error?.dailyBudget ? 'limite diario esgotado em todas as APIs' : 'todas as APIs em castigo 429', timestamp: now() });
           activeModel = nextModel;
           body = { ...body, model: nextModel };
           attempt = 0;
@@ -1069,7 +1070,7 @@ export async function forwardToNvidia(
           continue;
         }
       }
-      const reason = resting && !error?.dailyBudget ? describeRestingModel(activeModel) : undefined;
+      const reason = resting && !error?.dailyBudget && !error?.retired ? describeRestingModel(activeModel) : undefined;
       const errorMessage = (error?.message || 'Nenhuma API Gemini disponivel.') + (reason ? ` Ultimo motivo (${activeModel}): ${reason}` : '');
       markApiRequestError({ apiNumber, message: errorMessage, requestStartedAt, attempt, maxAttempts, timestamp: now() });
       return Response.json({
@@ -1140,6 +1141,7 @@ export async function forwardToNvidia(
       if (!response.ok) {
         markApiUpstreamError({ apiNumber, status: response.status, message: await describeUpstreamError(response), requestStartedAt, model: activeModel, attempt, maxAttempts, timestamp: now() });
         if (response.status === 429) markApiRateLimited({ apiNumber, model: activeModel, retryAfterMs: await rateLimitPenaltyMs(response, activeModel, apiNumber), timestamp: now() });
+        if (response.status === 410) markModelRetired({ model: activeModel });
         markApiResponseCompleted({ apiNumber, requestStartedAt, attempt, maxAttempts, timestamp: now() });
         await reader.cancel().catch(() => {});
 
@@ -1159,7 +1161,7 @@ export async function forwardToNvidia(
         if (retryableServerError) http500State.count++;
 
         const shouldFailover =
-          response.status === 429 || response.status === 404 ||
+          response.status === 429 || response.status === 410 || response.status === 404 ||
           (response.status === 400 && !keyFailure) ||
           (retryableServerError && http500State.count >= (keyFailure === 'high_demand' ? HIGH_DEMAND_MAX_TRIES : MAX_500_RETRIES));
 
@@ -1176,7 +1178,7 @@ export async function forwardToNvidia(
               ? 'todas as APIs em castigo 429'
               : retryableServerError
                 ? `modelo em erro HTTP ${response.status}${keyFailure === 'high_demand' ? ' (alta demanda)' : ''} apos ${keyFailure === 'high_demand' ? HIGH_DEMAND_MAX_TRIES : MAX_500_RETRIES} tentativas`
-                : `modelo recusado (HTTP ${response.status})`;
+                : (response.status === 410 ? 'modelo aposentado pelo provedor (HTTP 410)' : `modelo recusado (HTTP ${response.status})`);
             markApiModelSwitch({ from: previousModel, to: nextModel, apiNumber, reason, timestamp: now() });
             activeModel = nextModel;
             body = { ...body, model: nextModel };
@@ -1457,6 +1459,7 @@ async function hedgeForward(
       markApiUpstreamError({ apiNumber: primaryApiNumber, status: response.status, message: await describeUpstreamError(response), requestStartedAt, model: activeModel, attempt, maxAttempts, timestamp: now() });
       await noteKeyLevelFailure(response, primaryApiNumber);
       if (response.status === 429) markApiRateLimited({ apiNumber: primaryApiNumber, model: activeModel, retryAfterMs: await rateLimitPenaltyMs(response, activeModel, primaryApiNumber), timestamp: now() });
+      if (response.status === 410) markModelRetired({ model: activeModel });
       if (response.status !== 429) {
         // [DESLIGADO] captureUpstreamErrorForLog comentado — last_errors.json nao sera salvo.
         // void captureUpstreamErrorForLog(response, body, activeModel);
@@ -1626,6 +1629,7 @@ async function processPrimaryHttp(
     markApiUpstreamError({ apiNumber: primaryApiNumber, status: response.status, message: await describeUpstreamError(response), requestStartedAt, model: activeModel, attempt, maxAttempts, timestamp: now() });
     await noteKeyLevelFailure(response, primaryApiNumber);
     if (response.status === 429) markApiRateLimited({ apiNumber: primaryApiNumber, model: activeModel, retryAfterMs: await rateLimitPenaltyMs(response, activeModel, primaryApiNumber), timestamp: now() });
+    if (response.status === 410) markModelRetired({ model: activeModel });
     markApiResponseCompleted({ apiNumber: primaryApiNumber, requestStartedAt, attempt, maxAttempts, timestamp: now() });
     await reader.cancel().catch(() => {});
     return undefined;
@@ -1688,6 +1692,7 @@ async function doFetchWithModel(
       markApiUpstreamError({ apiNumber, status: response.status, message: await describeUpstreamError(response), requestStartedAt, model, attempt: 1, maxAttempts: 1, timestamp: Date.now() });
       await noteKeyLevelFailure(response, apiNumber);
       if (response.status === 429) markApiRateLimited({ apiNumber, model, retryAfterMs: (await inspectRateLimit(response)).penaltyMs, timestamp: Date.now() });
+      if (response.status === 410) markModelRetired({ model: model });
       if (response.status !== 429) {
         // [DESLIGADO] captureUpstreamErrorForLog comentado — last_errors.json nao sera salvo.
         // void captureUpstreamErrorForLog(response, body, model);

@@ -209,7 +209,7 @@ function usageRows(status) {
   const rows = new Map();
   const rowFor = (apiNumber, model) => {
     const key = apiNumber + '|' + model;
-    if (!rows.has(key)) rows.set(key, { apiNumber, model, used: 0, limit: null, exhausted: false, penaltyUntil: 0, penaltyStartedAt: 0, successesBefore429: 0 });
+    if (!rows.has(key)) rows.set(key, { apiNumber, model, used: 0, limit: null, exhausted: false, penaltyUntil: 0, penaltyStartedAt: 0, successesBefore429: 0, reason: '' });
     return rows.get(key);
   };
   (Array.isArray(status.apiUsage) ? status.apiUsage : []).forEach((item) => {
@@ -230,6 +230,7 @@ function usageRows(status) {
       row.penaltyUntil = penalty.penaltyUntil;
       row.penaltyStartedAt = penalty.penaltyStartedAt;
       row.successesBefore429 = Number(penalty.successesBefore429) || 0;
+      row.reason = penalty.reason || '';
     });
   });
   return [...rows.values()];
@@ -306,7 +307,10 @@ function renderPenalties(status) {
         info.append(sub, successes);
       }
       const state = document.createElement('span');
-      if (penalized) {
+      if (penalized && item.reason === 'retired') {
+        state.className = 'usage-state exhausted';
+        state.textContent = t('penalties.retired') + ' · ' + formatCountdown(item.penaltyUntil - now);
+      } else if (penalized) {
         state.className = 'penalty-countdown';
         state.textContent = formatCountdown(item.penaltyUntil - now);
       } else if (item.exhausted) {

@@ -163,6 +163,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'penalties.normalRotation': 'Rotation running normally.',
     'penalties.enteredAt': 'penalty started at {time}',
     'penalties.after429': 'penalized after HTTP 429',
+    'penalties.retired': 'retired by provider (HTTP 410)',
     'penalties.requests': '{count} requests',
     'penalties.refreshHint': 'Updates every second · Esc to go back',
 
@@ -628,6 +629,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'penalties.normalRotation': 'Tudo no rodizio normal.',
     'penalties.enteredAt': 'entrou de castigo as {time}',
     'penalties.after429': 'em castigo apos HTTP 429',
+    'penalties.retired': 'aposentado pelo provedor (HTTP 410)',
     'penalties.requests': '{count} requests',
     'penalties.refreshHint': 'Atualiza a cada segundo · Esc voltar',
 
@@ -1078,6 +1080,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'penalties.normalRotation': 'Normale Rotation läuft.',
     'penalties.enteredAt': 'Sperre begann um {time}',
     'penalties.after429': 'gesperrt nach HTTP 429',
+    'penalties.retired': 'vom Anbieter eingestellt (HTTP 410)',
     'penalties.requests': '{count} Anfragen',
     'penalties.refreshHint': 'Aktualisiert jede Sekunde · Esc zurück',
 
@@ -1528,6 +1531,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'penalties.normalRotation': 'Обычная ротация работает.',
     'penalties.enteredAt': 'блокировка началась в {time}',
     'penalties.after429': 'заблокировано после HTTP 429',
+    'penalties.retired': 'снята провайдером (HTTP 410)',
     'penalties.requests': '{count} запросов',
     'penalties.refreshHint': 'Обновляется каждую секунду · Esc назад',
 
@@ -1978,6 +1982,7 @@ export const messages: Record<Locale, I18nMessages> = {
     'penalties.normalRotation': '正常轮换中。',
     'penalties.enteredAt': '惩罚开始于 {time}',
     'penalties.after429': '在 HTTP 429 后被惩罚',
+    'penalties.retired': '已被提供方下线（HTTP 410）',
     'penalties.requests': '{count} 个请求',
     'penalties.refreshHint': '每秒更新 · Esc 返回',
 

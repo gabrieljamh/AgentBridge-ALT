@@ -113,6 +113,7 @@ type PersistedPenalty = {
   model: string;
   // Quantas respostas HTTP 200 essa (chave, modelo) acumulou ate levar o 429.
   successesBefore429: number;
+  reason?: 'retired';
   enteredAt: string;
   penaltyUntil: string;
 };
@@ -122,7 +123,7 @@ function savePenalties() {
     const usage = getRuntimeStatus().apiUsage as Array<{
       apiNumber: number;
       resting?: boolean;
-      penalties?: Array<{ model: string; penaltyStartedAt: number; penaltyUntil: number; successesBefore429?: number }>;
+      penalties?: Array<{ model: string; penaltyStartedAt: number; penaltyUntil: number; successesBefore429?: number; reason?: 'retired' }>;
     }>;
     const penalties: PersistedPenalty[] = [];
     for (const item of usage) {
@@ -132,6 +133,7 @@ function savePenalties() {
           keyFingerprint: keyFingerprint(unlockedConfig.apiKeys[item.apiNumber - 1] || ''),
           model: penalty.model,
           successesBefore429: Number(penalty.successesBefore429) || 0,
+          ...(penalty.reason === 'retired' ? { reason: 'retired' as const } : {}),
           enteredAt: new Date(penalty.penaltyStartedAt || Date.now()).toISOString(),
           penaltyUntil: new Date(penalty.penaltyUntil).toISOString()
         });
@@ -174,7 +176,8 @@ function loadPenalties() {
           penaltyUntil,
           Number.isFinite(enteredAt) ? enteredAt : undefined,
           typeof entry.model === 'string' ? entry.model : '',
-          Number(entry.successesBefore429) || 0
+          Number(entry.successesBefore429) || 0,
+          entry.reason === 'retired' ? 'retired' : undefined
         );
       }
     }

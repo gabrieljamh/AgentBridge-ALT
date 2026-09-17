@@ -1031,7 +1031,7 @@ async function penaltiesScreen(): Promise<void> {
     const render = () => {
       const status = getRuntimeStatus();
       const now = Date.now();
-      type Row = { apiNumber: number; model: string; used: number; limit: number | null; exhausted: boolean; penaltyUntil: number; successesBefore429: number };
+      type Row = { apiNumber: number; model: string; used: number; limit: number | null; exhausted: boolean; penaltyUntil: number; successesBefore429: number; reason?: string };
       const map = new Map<string, Row>();
       const rowFor = (apiNumber: number, model: string) => {
         const k = apiNumber + '|' + model;
@@ -1040,7 +1040,7 @@ async function penaltiesScreen(): Promise<void> {
       };
       for (const item of status.apiUsage) {
         for (const d of item.daily) Object.assign(rowFor(item.apiNumber, d.model), { used: d.used, limit: d.limit, exhausted: d.exhausted });
-        for (const p of item.penalties) Object.assign(rowFor(item.apiNumber, p.model), { penaltyUntil: p.penaltyUntil, successesBefore429: p.successesBefore429 || 0 });
+        for (const p of item.penalties) Object.assign(rowFor(item.apiNumber, p.model), { penaltyUntil: p.penaltyUntil, successesBefore429: p.successesBefore429 || 0, reason: p.reason });
       }
       const attention = (r: Row) => r.exhausted || r.penaltyUntil > now;
       const parsed = [...map.values()].sort((a, b) => (Number(attention(b)) - Number(attention(a))) || (a.apiNumber - b.apiNumber) || a.model.localeCompare(b.model));
@@ -1060,7 +1060,7 @@ async function penaltiesScreen(): Promise<void> {
             : (item.used ? t('usage.todayNoLimit', { used: String(item.used) }) : '');
           const usageColored = item.exhausted ? c.red(usage) : item.limit && item.used / item.limit >= 0.75 ? c.amber(usage) : c.faint(usage);
           const state = item.penaltyUntil > now
-            ? c.amber(formatCountdown(item.penaltyUntil - now))
+            ? (item.reason === 'retired' ? c.red(t('penalties.retired')) + ' ' : '') + c.amber(formatCountdown(item.penaltyUntil - now))
             : item.exhausted ? c.red(t('usage.exhausted', { time: resetTime })) : c.green(t('usage.free'));
           const left = padEndVisible(c.text(title), Math.max(16, w - 40));
           return `${left} ${padEndVisible(usageColored, 16)} ${state}`;

@@ -27,6 +27,8 @@ type ModelPenalty = {
   // Quantas respostas HTTP 200 esta (chave, modelo) acumulou ATE levar o 429.
   // Congelado no instante do 429 e exibido na tela de castigo.
   successesBefore429: number;
+  // 'retired' = o provedor respondeu HTTP 410 (modelo aposentado).
+  reason?: 'retired';
 };
 
 type ApiKeyState = {
@@ -567,7 +569,8 @@ export function setApiPenaltyUntil(
   penaltyUntil: number,
   penaltyStartedAt?: number,
   model?: string,
-  successesBefore429?: number
+  successesBefore429?: number,
+  reason?: 'retired'
 ) {
   const state = apiKeyStates[apiNumber - 1];
   if (!state) return;
@@ -576,7 +579,8 @@ export function setApiPenaltyUntil(
   state.penalties.set(modelKey(model), {
     penaltyUntil,
     penaltyStartedAt: penaltyStartedAt ?? Date.now(),
-    successesBefore429: successes
+    successesBefore429: successes,
+    ...(reason === 'retired' ? { reason } : {})
   });
   // Restaura a contagem congelada para a tela e o JSON seguirem batendo ate o
   // castigo expirar.
@@ -655,7 +659,8 @@ function activePenalties(state: ApiKeyState, timestamp: number) {
       model,
       penaltyStartedAt: penalty.penaltyStartedAt,
       penaltyUntil: penalty.penaltyUntil,
-      successesBefore429: penalty.successesBefore429
+      successesBefore429: penalty.successesBefore429,
+      reason: penalty.reason
     }))
     .sort((a, b) => a.penaltyUntil - b.penaltyUntil);
 }
@@ -840,6 +845,26 @@ export function markApiRateLimited(input: {
     } catch {
       // Observadores de interface nao podem interromper o encaminhamento.
     }
+  });
+}
+
+// Modelo aposentado pelo provedor (HTTP 410 Gone). Diferente do 429, nao e da chave:
+// o modelo sai do rodizio em TODAS as chaves por 24h (volta sozinho se o provedor
+// reativar o modelo, como aconteceu com o GLM 5.3 no NVIDIA NIM).
+export const RETIRED_MODEL_PENALTY_MS = 24 * 60 * 60_000;
+
+export function markModelRetired(input: { model?: string; timestamp?: number }) {
+  const model = modelKey(input.model);
+  if (!model) return;
+  const timestamp = input.timestamp ?? Date.now();
+  const penaltyUntil = timestamp + RETIRED_MODEL_PENALTY_MS;
+  apiKeyStates.forEach((state, index) => {
+    const successesBefore429 = state.successCounts.get(model) || 0;
+    state.penalties.set(model, { penaltyStartedAt: timestamp, penaltyUntil, successesBefore429, reason: 'retired' });
+    const event: ApiKeyPenaltyEvent = { apiNumber: index + 1, model, penaltyStartedAt: timestamp, penaltyUntil, successesBefore429 };
+    penaltyListeners.forEach((listener) => {
+      try { listener(event); } catch { /* UI nao derruba o proxy */ }
+    });
   });
 }
 
@@ -1081,6 +1106,8 @@ export async function reserveSendSlot(options: {
 export class AllKeysRestingError extends Error {
   readonly code = 'all_resting';
   readonly waitMs: number;
+  // true quando o modelo foi aposentado (HTTP 410) em todas as chaves.
+  retired = false;
   // true quando TODAS as chaves pararam por orcamento diario local (nao por 429).
   dailyBudget = false;
   constructor(waitMs: number) {
@@ -1139,6 +1166,7 @@ export async function acquireApiKey(options: AcquireApiKeyOptions = {}) {
     // Coleta todas as chaves elegiveis (nao em castigo para este modelo) e o
     // menor tempo de espera entre as de castigo (para a mensagem de erro).
     const eligibleIndices: number[] = [];
+    let retiredKeys = 0;
     let dailyExhaustedKeys = 0;
     let shortestPenaltyWaitMs = Number.POSITIVE_INFINITY;
     for (let index = 0; index < apiKeyStates.length; index++) {
@@ -1150,6 +1178,7 @@ export async function acquireApiKey(options: AcquireApiKeyOptions = {}) {
         continue;
       }
       if (isResting(state, timestamp, model)) {
+        if (state.penalties.get(key)?.reason === 'retired') retiredKeys++;
         const penalty = state.penalties.get(key) ?? state.penalties.get(ALL_MODELS_PENALTY_KEY);
         if (penalty) {
           shortestPenaltyWaitMs = Math.min(
@@ -1174,6 +1203,10 @@ export async function acquireApiKey(options: AcquireApiKeyOptions = {}) {
             + (limits ? ` (${limits.rpd}/${limits.rpd} por chave)` : '')
             + '. Zera a meia-noite do Pacifico.';
         error.dailyBudget = true;
+      }
+      if (retiredKeys === apiKeyStates.length) {
+        error.message = `O modelo ${key} foi aposentado pelo provedor (HTTP 410 Gone) e ficou fora do rodizio por 24h. Escolha outro modelo.`;
+        error.retired = true;
       }
       throw error;
     }

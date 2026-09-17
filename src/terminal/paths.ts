@@ -74,6 +74,7 @@ type PersistedPenalty = {
   keyFingerprint: string;
   model: string;
   successesBefore429: number;
+  reason?: 'retired';
   enteredAt: string;
   penaltyUntil: string;
 };
@@ -89,6 +90,7 @@ export function savePenalties(apiKeys: string[]): void {
         penaltyStartedAt: number;
         penaltyUntil: number;
         successesBefore429?: number;
+        reason?: 'retired';
       }>;
     }>;
     const penalties: PersistedPenalty[] = [];
@@ -99,6 +101,7 @@ export function savePenalties(apiKeys: string[]): void {
           keyFingerprint: keyFingerprint(apiKeys[item.apiNumber - 1] || ''),
           model: penalty.model,
           successesBefore429: Number(penalty.successesBefore429) || 0,
+          ...(penalty.reason === 'retired' ? { reason: 'retired' as const } : {}),
           enteredAt: new Date(penalty.penaltyStartedAt || Date.now()).toISOString(),
           penaltyUntil: new Date(penalty.penaltyUntil).toISOString()
         });
@@ -140,7 +143,8 @@ export function loadPenalties(apiKeys: string[]): void {
           penaltyUntil,
           Number.isFinite(enteredAt) ? enteredAt : undefined,
           typeof entry.model === 'string' ? entry.model : '',
-          Number(entry.successesBefore429) || 0
+          Number(entry.successesBefore429) || 0,
+          entry.reason === 'retired' ? 'retired' : undefined
         );
       }
     }
