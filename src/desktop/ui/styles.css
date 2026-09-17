@@ -152,6 +152,19 @@ pre { min-height: 170px; margin: 0; padding: 16px 92px 16px 16px; overflow: auto
 .penalty-sub { color: var(--muted); font-size: 11px; }
 .penalty-countdown { font-family: "Cascadia Code",Consolas,monospace; font-size: 16px; font-weight: 800; color: var(--amber); font-variant-numeric: tabular-nums; }
 .penalty-successes { color: var(--green); font-size: 11px; font-weight: 650; }
+.penalty-row.penalized { border-color: rgba(242,185,93,.35); }
+.penalty-row.exhausted { border-color: rgba(255,107,122,.35); }
+.penalty-info { min-width: 0; flex: 1; }
+.usage-line { color: var(--text); font: 11px "Cascadia Code",Consolas,monospace; }
+.usage-bar { position: relative; height: 5px; max-width: 240px; border-radius: 999px; background: #0c0f14; overflow: hidden; }
+.usage-bar span { position: absolute; inset: 0 auto 0 0; background: var(--accent); border-radius: 999px; }
+.usage-bar span.high { background: var(--amber); }
+.usage-bar span.full { background: var(--red); }
+.usage-state { font-size: 12px; font-weight: 750; white-space: nowrap; }
+.usage-state.free { color: var(--green); }
+.usage-state.exhausted { color: var(--red); }
+.model-daily { color: var(--muted); font: 10px "Cascadia Code",Consolas,monospace; }
+.model-daily.warn { color: var(--amber); }
 .terminal-actions { display: flex; align-items: center; gap: 10px; }
 
 /* Painel de redirecionamento de modelo */

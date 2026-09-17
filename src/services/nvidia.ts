@@ -20,6 +20,7 @@ import {
   markApiSuccess,
   markApiUpstreamError,
   markApiKeyDisabled,
+  markDailyBudgetExhausted,
   type AcquireApiKeyOptions
 } from './runtime.ts';
 import {
@@ -44,9 +45,10 @@ export type NvidiaFetch = typeof fetch;
 // reiniciar o app. Nao faz sentido trocar de modelo por causa disso.
 const KEY_DISABLED_PENALTY_MS = 24 * 60 * 60_000;
 
-async function rateLimitPenaltyMs(response: Response, model: unknown) {
+async function rateLimitPenaltyMs(response: Response, model: string | undefined, apiNumber: number) {
   const info = await inspectRateLimit(response);
   rememberRateLimit(model, info);
+  if (info.scope === 'daily') markDailyBudgetExhausted({ apiNumber, model });
   return info.penaltyMs;
 }
 
@@ -1026,7 +1028,7 @@ export async function forwardToNvidia(
         if (activeModel) exhaustedModels.push(activeModel);
         const nextModel = options.resolveModel(exhaustedModels.slice());
         if (nextModel && !exhaustedModels.includes(nextModel)) {
-          markApiModelSwitch({ from: previousModel, to: nextModel, reason: 'todas as APIs em castigo 429', timestamp: now() });
+          markApiModelSwitch({ from: previousModel, to: nextModel, reason: error?.dailyBudget ? 'limite diario esgotado em todas as APIs' : 'todas as APIs em castigo 429', timestamp: now() });
           activeModel = nextModel;
           body = { ...body, model: nextModel };
           attempt = 0;
@@ -1034,7 +1036,7 @@ export async function forwardToNvidia(
           continue;
         }
       }
-      const reason = resting ? describeRestingModel(activeModel) : undefined;
+      const reason = resting && !error?.dailyBudget ? describeRestingModel(activeModel) : undefined;
       const errorMessage = (error?.message || 'Nenhuma API Gemini disponivel.') + (reason ? ` Ultimo motivo (${activeModel}): ${reason}` : '');
       markApiRequestError({ apiNumber, message: errorMessage, requestStartedAt, attempt, maxAttempts, timestamp: now() });
       return Response.json({
@@ -1096,7 +1098,7 @@ export async function forwardToNvidia(
 
       if (response.status === 429 && attempt < maxAttempts) {
         markApiUpstreamError({ apiNumber, status: 429, message: await describeUpstreamError(response), requestStartedAt, model: activeModel, attempt, maxAttempts, timestamp: now() });
-        markApiRateLimited({ apiNumber, model: activeModel, retryAfterMs: await rateLimitPenaltyMs(response, activeModel), timestamp: now() });
+        markApiRateLimited({ apiNumber, model: activeModel, retryAfterMs: await rateLimitPenaltyMs(response, activeModel, apiNumber), timestamp: now() });
         markApiResponseCompleted({ apiNumber, requestStartedAt, attempt, maxAttempts, timestamp: now() });
         await reader.cancel().catch(() => {});
         continue;
@@ -1104,7 +1106,7 @@ export async function forwardToNvidia(
 
       if (!response.ok) {
         markApiUpstreamError({ apiNumber, status: response.status, message: await describeUpstreamError(response), requestStartedAt, model: activeModel, attempt, maxAttempts, timestamp: now() });
-        if (response.status === 429) markApiRateLimited({ apiNumber, model: activeModel, retryAfterMs: await rateLimitPenaltyMs(response, activeModel), timestamp: now() });
+        if (response.status === 429) markApiRateLimited({ apiNumber, model: activeModel, retryAfterMs: await rateLimitPenaltyMs(response, activeModel, apiNumber), timestamp: now() });
         markApiResponseCompleted({ apiNumber, requestStartedAt, attempt, maxAttempts, timestamp: now() });
         await reader.cancel().catch(() => {});
 
@@ -1403,7 +1405,7 @@ async function hedgeForward(
     // 429: coloca em castigo e retorna undefined pro loop tentar de novo
     if (response.status === 429) {
       markApiUpstreamError({ apiNumber: primaryApiNumber, status: 429, message: await describeUpstreamError(response), requestStartedAt, model: activeModel, attempt, maxAttempts, timestamp: now() });
-      markApiRateLimited({ apiNumber: primaryApiNumber, model: activeModel, retryAfterMs: await rateLimitPenaltyMs(response, activeModel), timestamp: now() });
+      markApiRateLimited({ apiNumber: primaryApiNumber, model: activeModel, retryAfterMs: await rateLimitPenaltyMs(response, activeModel, primaryApiNumber), timestamp: now() });
       markApiResponseCompleted({ apiNumber: primaryApiNumber, requestStartedAt, attempt, maxAttempts, timestamp: now() });
       await reader.cancel().catch(() => {});
       cleanup();
@@ -1414,7 +1416,7 @@ async function hedgeForward(
     if (!response.ok) {
       markApiUpstreamError({ apiNumber: primaryApiNumber, status: response.status, message: await describeUpstreamError(response), requestStartedAt, model: activeModel, attempt, maxAttempts, timestamp: now() });
       await noteKeyLevelFailure(response, primaryApiNumber);
-      if (response.status === 429) markApiRateLimited({ apiNumber: primaryApiNumber, model: activeModel, retryAfterMs: await rateLimitPenaltyMs(response, activeModel), timestamp: now() });
+      if (response.status === 429) markApiRateLimited({ apiNumber: primaryApiNumber, model: activeModel, retryAfterMs: await rateLimitPenaltyMs(response, activeModel, primaryApiNumber), timestamp: now() });
       if (response.status !== 429) {
         // [DESLIGADO] captureUpstreamErrorForLog comentado — last_errors.json nao sera salvo.
         // void captureUpstreamErrorForLog(response, body, activeModel);
@@ -1574,7 +1576,7 @@ async function processPrimaryHttp(
 
   if (response.status === 429 && attempt < maxAttempts) {
     markApiUpstreamError({ apiNumber: primaryApiNumber, status: 429, message: await describeUpstreamError(response), requestStartedAt, model: activeModel, attempt, maxAttempts, timestamp: now() });
-    markApiRateLimited({ apiNumber: primaryApiNumber, model: activeModel, retryAfterMs: await rateLimitPenaltyMs(response, activeModel), timestamp: now() });
+    markApiRateLimited({ apiNumber: primaryApiNumber, model: activeModel, retryAfterMs: await rateLimitPenaltyMs(response, activeModel, primaryApiNumber), timestamp: now() });
     markApiResponseCompleted({ apiNumber: primaryApiNumber, requestStartedAt, attempt, maxAttempts, timestamp: now() });
     await reader.cancel().catch(() => {});
     return undefined;
@@ -1583,7 +1585,7 @@ async function processPrimaryHttp(
   if (!response.ok) {
     markApiUpstreamError({ apiNumber: primaryApiNumber, status: response.status, message: await describeUpstreamError(response), requestStartedAt, model: activeModel, attempt, maxAttempts, timestamp: now() });
     await noteKeyLevelFailure(response, primaryApiNumber);
-    if (response.status === 429) markApiRateLimited({ apiNumber: primaryApiNumber, model: activeModel, retryAfterMs: await rateLimitPenaltyMs(response, activeModel), timestamp: now() });
+    if (response.status === 429) markApiRateLimited({ apiNumber: primaryApiNumber, model: activeModel, retryAfterMs: await rateLimitPenaltyMs(response, activeModel, primaryApiNumber), timestamp: now() });
     markApiResponseCompleted({ apiNumber: primaryApiNumber, requestStartedAt, attempt, maxAttempts, timestamp: now() });
     await reader.cancel().catch(() => {});
     return undefined;

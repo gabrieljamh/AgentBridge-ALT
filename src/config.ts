@@ -50,6 +50,20 @@ export const DEFAULT_MODEL_CATALOG: ModelCatalogEntry[] = [
 // Ordem de prioridade padrao do failover automatico de modelo (ids "provider/modelo").
 // O proxy sempre tenta o primeiro disponivel desta lista, caindo para o proximo
 // quando todas as chaves do atual estao de castigo (429).
+// Limites do free tier por modelo, POR PROJETO (= por chave), conferidos no painel
+// do AI Studio em 17/09/2026: familia Flash = 5 RPM / 20 RPD; Flash-Lite = 15 RPM /
+// 500 RPD (cada modelo da familia tem o proprio limite). Modelos fora dessas familias
+// ficam sem limite local (o 429 do Gemini continua valendo).
+export type ModelLimits = { rpm: number; rpd: number };
+
+export function modelLimitsFor(model: string): ModelLimits | undefined {
+  const id = String(model || '').toLowerCase();
+  if (!/^(models\/)?gemini-/.test(id)) return undefined;
+  if (/flash-lite/.test(id)) return { rpm: 15, rpd: 500 };
+  if (/flash/.test(id) && !/(image|tts|live|transcribe)/.test(id)) return { rpm: 5, rpd: 20 };
+  return undefined;
+}
+
 export const DEFAULT_MODEL_PRIORITY: string[] = DEFAULT_MODEL_CATALOG.map((item) => item.model);
 
 // Alternancia automatica de modelo desligada por padrao: o usuario liga no app.

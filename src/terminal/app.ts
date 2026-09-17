@@ -4,6 +4,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { app as honoApp } from '../index.ts';
 import { runModelQuiz } from '../services/modelQuiz.ts';
+import { autoSaveDailyUsage, loadDailyUsage } from '../services/dailyUsageStore.ts';
 import { extractProviderMessage } from '../services/gemini.ts';
 import {
   APP_NAME,
@@ -43,6 +44,7 @@ import {
   appDir,
   configPath,
   loadPenalties,
+  dailyUsagePath,
   localePath,
   penaltiesPath,
   savePenalties
@@ -427,9 +429,12 @@ function hotkeyBar(penaltyCount: number): string {
 }
 
 function countPenalties(status: ReturnType<typeof getRuntimeStatus>): number {
+  const now = Date.now();
   let count = 0;
-  for (const item of status.apiUsage as Array<{ penalties?: unknown[] }>) {
-    count += (item.penalties || []).length;
+  for (const item of status.apiUsage) {
+    const penalized = new Set(item.penalties.filter((p) => p.penaltyUntil > now).map((p) => p.model));
+    count += penalized.size;
+    count += item.daily.filter((d) => d.exhausted && !penalized.has(d.model)).length;
   }
   return count;
 }
@@ -1010,16 +1015,20 @@ async function penaltiesScreen(): Promise<void> {
     const render = () => {
       const status = getRuntimeStatus();
       const now = Date.now();
-      const rows: string[] = [];
-      (status.apiUsage as Array<{ apiNumber: number; penalties?: Array<{ model: string; penaltyStartedAt: number; penaltyUntil: number; successesBefore429?: number }> }>)
-        .forEach((item) => {
-          (item.penalties || []).forEach((penalty) => {
-            rows.push(JSON.stringify({ ...penalty, apiNumber: item.apiNumber }));
-          });
-        });
-      const parsed = rows
-        .map((r) => JSON.parse(r) as { apiNumber: number; model: string; penaltyStartedAt: number; penaltyUntil: number; successesBefore429?: number })
-        .sort((a, b) => a.penaltyUntil - b.penaltyUntil);
+      type Row = { apiNumber: number; model: string; used: number; limit: number | null; exhausted: boolean; penaltyUntil: number; successesBefore429: number };
+      const map = new Map<string, Row>();
+      const rowFor = (apiNumber: number, model: string) => {
+        const k = apiNumber + '|' + model;
+        if (!map.has(k)) map.set(k, { apiNumber, model, used: 0, limit: null, exhausted: false, penaltyUntil: 0, successesBefore429: 0 });
+        return map.get(k)!;
+      };
+      for (const item of status.apiUsage) {
+        for (const d of item.daily) Object.assign(rowFor(item.apiNumber, d.model), { used: d.used, limit: d.limit, exhausted: d.exhausted });
+        for (const p of item.penalties) Object.assign(rowFor(item.apiNumber, p.model), { penaltyUntil: p.penaltyUntil, successesBefore429: p.successesBefore429 || 0 });
+      }
+      const attention = (r: Row) => r.exhausted || r.penaltyUntil > now;
+      const parsed = [...map.values()].sort((a, b) => (Number(attention(b)) - Number(attention(a))) || (a.apiNumber - b.apiNumber) || a.model.localeCompare(b.model));
+      const resetTime = new Date(status.dailyResetsAt).toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit' });
 
       const header = sectionHeader(t('penalties.title'), t('penalties.subtitle', { path: penaltiesPath() }));
       const w = innerWidth();
@@ -1028,12 +1037,17 @@ async function penaltiesScreen(): Promise<void> {
         bodyLines = [c.green(t('penalties.none')), '', c.faint(t('penalties.normalRotation'))];
       } else {
         bodyLines = parsed.map((item) => {
-          const title = item.model ? `API ${item.apiNumber} · ${item.model}` : `API ${item.apiNumber}`;
-          const remaining = item.penaltyUntil - now;
-          const countdown = remaining > 0 ? c.amber(formatCountdown(remaining)) : c.green('00:00');
-          const requests = c.faint(t('penalties.requests', { count: String(item.successesBefore429 || 0) }));
-          const left = padEndVisible(c.text(title), Math.max(16, w - 22));
-          return `${left} ${requests}  ${countdown}`;
+          const modelName = item.model === '*' ? t('usage.keyDisabled') : item.model;
+          const title = modelName ? `API ${item.apiNumber} · ${modelName}` : `API ${item.apiNumber}`;
+          const usage = item.limit !== null
+            ? t('usage.today', { used: String(item.used), limit: String(item.limit) })
+            : (item.used ? t('usage.todayNoLimit', { used: String(item.used) }) : '');
+          const usageColored = item.exhausted ? c.red(usage) : item.limit && item.used / item.limit >= 0.75 ? c.amber(usage) : c.faint(usage);
+          const state = item.penaltyUntil > now
+            ? c.amber(formatCountdown(item.penaltyUntil - now))
+            : item.exhausted ? c.red(t('usage.exhausted', { time: resetTime })) : c.green(t('usage.free'));
+          const left = padEndVisible(c.text(title), Math.max(16, w - 40));
+          return `${left} ${padEndVisible(usageColored, 16)} ${state}`;
         });
       }
       drawFrame(header.concat(
@@ -1473,6 +1487,7 @@ async function unlockFlow(): Promise<boolean> {
         initLocale(unlockedConfig.locale);
         refreshRuntime();
         loadPenalties(unlockedConfig.apiKeys);
+        loadDailyUsage(dailyUsagePath());
         proxyState = 'stopped';
         // Sobe o gateway automaticamente, igual ao desktop.
         if (unlockedConfig.apiKeys.length) await startProxy();
@@ -1542,6 +1557,7 @@ function wireRuntimeEvents(): void {
   onApiKeyPenalized(() => {
     savePenalties(unlockedConfig.apiKeys);
   });
+  autoSaveDailyUsage(dailyUsagePath);
 }
 
 // ----------------------------------------------------------------------------

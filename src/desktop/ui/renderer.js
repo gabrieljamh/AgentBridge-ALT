@@ -201,36 +201,49 @@ function formatCountdown(milliseconds) {
     : `${pad(minutes)}:${pad(seconds)}`;
 }
 
-// Achata o apiUsage em uma linha por (API, modelo): a mesma API aparece varias
-// vezes se estiver de castigo em mais de um modelo (ex.: 429 no 3.8 Flash e no 2.5 Pro).
-function penaltyRows(status) {
-  const rows = [];
+// Uma linha por (API, modelo) juntando o uso de hoje (RPD) e os castigos ativos.
+// model '*' = chave inteira desativada (chave invalida/sem billing).
+function usageRows(status) {
+  const rows = new Map();
+  const rowFor = (apiNumber, model) => {
+    const key = apiNumber + '|' + model;
+    if (!rows.has(key)) rows.set(key, { apiNumber, model, used: 0, limit: null, exhausted: false, penaltyUntil: 0, penaltyStartedAt: 0, successesBefore429: 0 });
+    return rows.get(key);
+  };
   (Array.isArray(status.apiUsage) ? status.apiUsage : []).forEach((item) => {
+    (Array.isArray(item.daily) ? item.daily : []).forEach((d) => {
+      const row = rowFor(item.apiNumber, d.model || '');
+      row.used = Number(d.used) || 0;
+      row.limit = d.limit === null || d.limit === undefined ? null : Number(d.limit);
+      row.exhausted = Boolean(d.exhausted);
+    });
     const penalties = Array.isArray(item.penalties) && item.penalties.length
       ? item.penalties
-      // Fallback para status antigo sem o array de penalties por modelo.
       : (item.resting && item.penaltyUntil
           ? [{ model: '', penaltyStartedAt: item.penaltyStartedAt, penaltyUntil: item.penaltyUntil }]
           : []);
     penalties.forEach((penalty) => {
       if (!penalty.penaltyUntil) return;
-      rows.push({
-        apiNumber: item.apiNumber,
-        model: penalty.model || '',
-        penaltyStartedAt: penalty.penaltyStartedAt,
-        penaltyUntil: penalty.penaltyUntil,
-        successesBefore429: Number(penalty.successesBefore429) || 0
-      });
+      const row = rowFor(item.apiNumber, penalty.model || '');
+      row.penaltyUntil = penalty.penaltyUntil;
+      row.penaltyStartedAt = penalty.penaltyStartedAt;
+      row.successesBefore429 = Number(penalty.successesBefore429) || 0;
     });
   });
-  return rows;
+  return [...rows.values()];
+}
+
+function rowNeedsAttention(row, now) {
+  return row.exhausted || (row.penaltyUntil && row.penaltyUntil > now);
 }
 
 function renderPenalties(status) {
-  const rows = penaltyRows(status);
+  const now = Date.now();
+  const rows = usageRows(status);
+  const attention = rows.filter((row) => rowNeedsAttention(row, now)).length;
   if (elements.penaltyBadge) {
-    elements.penaltyBadge.textContent = String(rows.length);
-    elements.penaltyBadge.classList.toggle('hidden', rows.length === 0);
+    elements.penaltyBadge.textContent = String(attention);
+    elements.penaltyBadge.classList.toggle('hidden', attention === 0);
   }
   if (elements.penaltyPathValue) {
     elements.penaltyPathValue.textContent = status.penaltyPath || '';
@@ -241,31 +254,67 @@ function renderPenalties(status) {
       '<div class="terminal-empty">' + t('electron.noPenalty') + '</div>';
     return;
   }
-  const now = Date.now();
+  const locale = (lastStatus && lastStatus.locale) || 'en';
+  const resetTime = status.dailyResetsAt
+    ? new Date(status.dailyResetsAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
+    : '';
   const fragment = document.createDocumentFragment();
   rows
     .slice()
-    .sort((a, b) => (a.penaltyUntil || 0) - (b.penaltyUntil || 0))
+    .sort((a, b) => (Number(rowNeedsAttention(b, now)) - Number(rowNeedsAttention(a, now)))
+      || (a.apiNumber - b.apiNumber)
+      || a.model.localeCompare(b.model))
     .forEach((item) => {
+      const penalized = item.penaltyUntil && item.penaltyUntil > now;
       const row = document.createElement('div');
-      row.className = 'penalty-row';
+      row.className = 'penalty-row' + (penalized ? ' penalized' : item.exhausted ? ' exhausted' : '');
       const info = document.createElement('div');
       info.className = 'penalty-info';
       const title = document.createElement('strong');
-      title.textContent = item.model ? `API ${item.apiNumber} · ${item.model}` : `API ${item.apiNumber}`;
-      const sub = document.createElement('span');
-      sub.className = 'penalty-sub';
-      sub.textContent = item.penaltyStartedAt
-        ? t('penalties.enteredAt', { time: new Date(item.penaltyStartedAt).toLocaleTimeString((lastStatus && lastStatus.locale) || 'en') })
-        : t('penalties.after429');
-      const successes = document.createElement('span');
-      successes.className = 'penalty-successes';
-      successes.textContent = t('penalties.requests', { count: String(item.successesBefore429) });
-      info.append(title, sub, successes);
-      const countdown = document.createElement('span');
-      countdown.className = 'penalty-countdown';
-      countdown.textContent = formatCountdown(item.penaltyUntil - now);
-      row.append(info, countdown);
+      const modelName = item.model === '*' ? t('usage.keyDisabled') : item.model;
+      title.textContent = modelName ? `API ${item.apiNumber} · ${modelName}` : `API ${item.apiNumber}`;
+      info.append(title);
+      if (item.used > 0 || item.limit !== null) {
+        const usage = document.createElement('span');
+        usage.className = 'usage-line';
+        usage.textContent = item.limit !== null
+          ? t('usage.today', { used: String(item.used), limit: String(item.limit) })
+          : t('usage.todayNoLimit', { used: String(item.used) });
+        info.append(usage);
+        if (item.limit) {
+          const barTrack = document.createElement('div');
+          barTrack.className = 'usage-bar';
+          const fill = document.createElement('span');
+          const ratio = Math.min(1, item.used / item.limit);
+          fill.style.width = (ratio * 100).toFixed(1) + '%';
+          fill.className = ratio >= 1 ? 'full' : ratio >= 0.75 ? 'high' : '';
+          barTrack.append(fill);
+          info.append(barTrack);
+        }
+      }
+      if (penalized) {
+        const sub = document.createElement('span');
+        sub.className = 'penalty-sub';
+        sub.textContent = item.penaltyStartedAt
+          ? t('penalties.enteredAt', { time: new Date(item.penaltyStartedAt).toLocaleTimeString(locale) })
+          : t('penalties.after429');
+        const successes = document.createElement('span');
+        successes.className = 'penalty-successes';
+        successes.textContent = t('penalties.requests', { count: String(item.successesBefore429) });
+        info.append(sub, successes);
+      }
+      const state = document.createElement('span');
+      if (penalized) {
+        state.className = 'penalty-countdown';
+        state.textContent = formatCountdown(item.penaltyUntil - now);
+      } else if (item.exhausted) {
+        state.className = 'usage-state exhausted';
+        state.textContent = t('usage.exhausted', { time: resetTime });
+      } else {
+        state.className = 'usage-state free';
+        state.textContent = t('usage.free');
+      }
+      row.append(info, state);
       fragment.append(row);
     });
   elements.penaltyList.replaceChildren(fragment);
@@ -631,7 +680,17 @@ function buildModelGrid(status) {
     tag.className = 'model-active-tag';
     tag.textContent = t('electron.inUse');
     tag.hidden = !isActive;
-    name.append(strong, code, tag);
+    name.append(strong, code);
+    const daily = status.modelDaily && status.modelDaily[entry.model];
+    if (daily && daily.used > 0) {
+      const today = document.createElement('span');
+      today.className = 'model-daily' + (daily.exhaustedKeys > 0 ? ' warn' : '');
+      today.textContent = daily.limit
+        ? t('usage.modelToday', { used: String(daily.used), limit: String(daily.limit) })
+        : t('usage.todayNoLimit', { used: String(daily.used) });
+      name.append(today);
+    }
+    name.append(tag);
     head.append(icon, name);
 
     if (auto) {

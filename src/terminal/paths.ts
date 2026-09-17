@@ -51,6 +51,10 @@ export function configPath(): string {
   return path.join(appDir(), 'config.json');
 }
 
+export function dailyUsagePath(): string {
+  return path.join(appDir(), 'daily_usage.json');
+}
+
 export function penaltiesPath(): string {
   return path.join(appDir(), 'penalties.json');
 }

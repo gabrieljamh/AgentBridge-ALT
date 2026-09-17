@@ -6,6 +6,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { app as honoApp } from '../index.ts';
 import { runModelQuiz } from '../services/modelQuiz.ts';
+import { autoSaveDailyUsage, loadDailyUsage } from '../services/dailyUsageStore.ts';
 import {
   APP_NAME,
   APP_VERSION,
@@ -82,6 +83,10 @@ let unlockedConfig: UnlockedConfig = {
 
 function configPath() {
   return path.join(electronApp.getPath('documents'), DATA_DIR_NAME, 'config.json');
+}
+
+function dailyUsagePath() {
+  return path.join(electronApp.getPath('documents'), DATA_DIR_NAME, 'daily_usage.json');
 }
 
 function penaltiesPath() {
@@ -250,6 +255,8 @@ function startStatusRefresh() {
   }, 1000);
 }
 
+autoSaveDailyUsage(dailyUsagePath);
+
 onApiKeyPenalized(() => {
   savePenalties();
   broadcastStatus();
@@ -352,6 +359,7 @@ async function unlock(password: unknown) {
     // So pede a chave local se o config ainda nao guarda uma (config antigo).
     localKeyResolved = localKeyStored(configPath());
     loadPenalties();
+    loadDailyUsage(dailyUsagePath());
     proxyState = 'stopped';
     await startProxy();
   } else {

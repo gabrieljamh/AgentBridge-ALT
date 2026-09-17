@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   DEFAULT_MODEL,
   DEFAULT_PORT,
@@ -7,8 +8,10 @@ import {
   RATE_LIMIT_PENALTY_MS,
   RATE_LIMIT_WINDOW_MS,
   REQUEST_DELAY_MS,
+  modelLimitsFor,
   type ModelCatalogEntry
 } from '../config.ts';
+import { msUntilNextPacificMidnight } from './gemini.ts';
 
 // Um castigo de 429 ATIVO para um modelo especifico. A mesma chave pode ter
 // varios destes ao mesmo tempo (um por modelo que recebeu 429).
@@ -162,6 +165,117 @@ export function pruneApiRequestLogs<T extends { timestamp: number }>(
   return logs
     .filter((entry) => entry.timestamp >= cutoff)
     .slice(-maxEntries);
+}
+
+// ---------------------------------------------------------------------------
+// Orcamento diario (RPD) por (chave, modelo)
+// ---------------------------------------------------------------------------
+// O Gemini conta requests por PROJETO (= chave) e por modelo, zerando a meia-noite
+// do Pacifico. Guardamos a contagem local para (1) mostrar "usado hoje / limite" e
+// (2) pular a chave naquele modelo quando o limite do dia acabou, sem gastar uma
+// request so para receber 429. Tentativas que falham tambem contam (o Gemini conta).
+// A chave e identificada por um hash curto (nunca a chave em si), entao a contagem
+// sobrevive a reordenar/remover chaves e pode ir para disco.
+
+type DailyCounter = { day: string; count: number };
+const dailyUsage = new Map<string, Map<string, DailyCounter>>();
+const dailyUsageListeners = new Set<() => void>();
+
+export function keyFingerprint(apiKey: string) {
+  return createHash('sha256').update(apiKey).digest('hex').slice(0, 12);
+}
+
+// Data (YYYY-MM-DD) no fuso do Pacifico, que e quando o Gemini zera o RPD.
+export function pacificDay(timestamp = Date.now()) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' })
+    .format(new Date(timestamp));
+}
+
+function dailyCount(apiKey: string, model: string, timestamp: number) {
+  const counter = dailyUsage.get(keyFingerprint(apiKey))?.get(model);
+  return counter && counter.day === pacificDay(timestamp) ? counter.count : 0;
+}
+
+function setDailyCount(apiKey: string, model: string, count: number, timestamp: number) {
+  const fp = keyFingerprint(apiKey);
+  let perModel = dailyUsage.get(fp);
+  if (!perModel) {
+    perModel = new Map();
+    dailyUsage.set(fp, perModel);
+  }
+  perModel.set(model, { day: pacificDay(timestamp), count });
+  dailyUsageListeners.forEach((listener) => {
+    try { listener(); } catch { /* UI nao derruba o proxy */ }
+  });
+}
+
+function dailyBudgetExhausted(state: ApiKeyState, model: string, timestamp: number) {
+  const limits = modelLimitsFor(model);
+  return Boolean(limits && dailyCount(state.apiKey, model, timestamp) >= limits.rpd);
+}
+
+export function onDailyUsageChanged(listener: () => void) {
+  dailyUsageListeners.add(listener);
+  return () => dailyUsageListeners.delete(listener);
+}
+
+// O Gemini respondeu 429 de cota DIARIA: sincroniza a contagem local com o limite
+// (a chave pode ter sido usada fora do app, ex.: AI Studio ou AliveNPCs).
+export function markDailyBudgetExhausted(input: { apiNumber: number; model?: string; timestamp?: number }) {
+  const state = apiKeyStates[input.apiNumber - 1];
+  const model = modelKey(input.model);
+  const limits = modelLimitsFor(model);
+  if (!state || !limits) return;
+  const timestamp = input.timestamp ?? Date.now();
+  setDailyCount(state.apiKey, model, Math.max(limits.rpd, dailyCount(state.apiKey, model, timestamp)), timestamp);
+}
+
+export type PersistedDailyUsage = { keyFingerprint: string; model: string; day: string; count: number };
+
+export function exportDailyUsage(timestamp = Date.now()): PersistedDailyUsage[] {
+  const today = pacificDay(timestamp);
+  const rows: PersistedDailyUsage[] = [];
+  for (const [fp, perModel] of dailyUsage) {
+    for (const [model, counter] of perModel) {
+      if (counter.day === today && counter.count > 0) rows.push({ keyFingerprint: fp, model, day: counter.day, count: counter.count });
+    }
+  }
+  return rows;
+}
+
+export function importDailyUsage(rows: unknown, timestamp = Date.now()) {
+  if (!Array.isArray(rows)) return;
+  const today = pacificDay(timestamp);
+  for (const row of rows as PersistedDailyUsage[]) {
+    if (!row || typeof row.keyFingerprint !== 'string' || typeof row.model !== 'string') continue;
+    if (row.day !== today || !(Number(row.count) > 0)) continue;
+    let perModel = dailyUsage.get(row.keyFingerprint);
+    if (!perModel) {
+      perModel = new Map();
+      dailyUsage.set(row.keyFingerprint, perModel);
+    }
+    const current = perModel.get(row.model);
+    const count = Math.max(Number(row.count), current && current.day === today ? current.count : 0);
+    perModel.set(row.model, { day: today, count });
+  }
+}
+
+export function clearDailyUsage() {
+  dailyUsage.clear();
+}
+
+// Linhas "usado hoje / limite" por (chave, modelo) com uso > 0 hoje.
+function dailyRows(state: ApiKeyState, timestamp: number) {
+  const perModel = dailyUsage.get(keyFingerprint(state.apiKey));
+  if (!perModel) return [];
+  const today = pacificDay(timestamp);
+  return [...perModel.entries()]
+    .filter(([, counter]) => counter.day === today && counter.count > 0)
+    .map(([model, counter]) => {
+      const limits = modelLimitsFor(model);
+      return { model, used: counter.count, limit: limits ? limits.rpd : null, exhausted: Boolean(limits && counter.count >= limits.rpd) };
+    })
+    .sort((a, b) => a.model.localeCompare(b.model));
 }
 
 export function setRuntimeConfig(config: {
@@ -938,6 +1052,8 @@ export async function reserveSendSlot(options: {
 export class AllKeysRestingError extends Error {
   readonly code = 'all_resting';
   readonly waitMs: number;
+  // true quando TODAS as chaves pararam por orcamento diario local (nao por 429).
+  dailyBudget = false;
   constructor(waitMs: number) {
     super('Todas as APIs Gemini estao em castigo apos HTTP 429. Tente novamente mais tarde.');
     this.name = 'AllKeysRestingError';
@@ -961,10 +1077,16 @@ export async function acquireApiKey(options: AcquireApiKeyOptions = {}) {
     // Coleta todas as chaves elegiveis (nao em castigo para este modelo) e o
     // menor tempo de espera entre as de castigo (para a mensagem de erro).
     const eligibleIndices: number[] = [];
+    let dailyExhaustedKeys = 0;
     let shortestPenaltyWaitMs = Number.POSITIVE_INFINITY;
     for (let index = 0; index < apiKeyStates.length; index++) {
       const state = apiKeyStates[index];
       resetExpiredWindow(state, timestamp);
+      if (dailyBudgetExhausted(state, key, timestamp)) {
+        dailyExhaustedKeys++;
+        shortestPenaltyWaitMs = Math.min(shortestPenaltyWaitMs, msUntilNextPacificMidnight(timestamp));
+        continue;
+      }
       if (isResting(state, timestamp, model)) {
         const penalty = state.penalties.get(key) ?? state.penalties.get(ALL_MODELS_PENALTY_KEY);
         if (penalty) {
@@ -981,7 +1103,15 @@ export async function acquireApiKey(options: AcquireApiKeyOptions = {}) {
     if (eligibleIndices.length === 0) {
       // Todas as chaves estao de castigo. Em vez de segurar a request por ate 1 hora,
       // devolvemos um erro para o cliente reenviar mais tarde.
-      throw new AllKeysRestingError(Math.max(1, Math.ceil(shortestPenaltyWaitMs)));
+      const error = new AllKeysRestingError(Math.max(1, Math.ceil(shortestPenaltyWaitMs)));
+      if (dailyExhaustedKeys === apiKeyStates.length) {
+        const limits = modelLimitsFor(key);
+        error.message = `Limite diario do modelo ${key} esgotado em todas as ${apiKeyStates.length} chave(s)`
+          + (limits ? ` (${limits.rpd}/${limits.rpd} por chave)` : '')
+          + '. Zera a meia-noite do Pacifico.';
+        error.dailyBudget = true;
+      }
+      throw error;
     }
 
     // Sticky por modelo: gruda na chave salva para este modelo. Se ainda nao
@@ -1006,6 +1136,7 @@ export async function acquireApiKey(options: AcquireApiKeyOptions = {}) {
     // Se a NVIDIA devolver 429, o fluxo de failover/castigo por modelo trata isso.
 
     state.requestTimestamps.push(timestamp);
+    if (modelLimitsFor(key)) setDailyCount(state.apiKey, key, dailyCount(state.apiKey, key, timestamp) + 1, timestamp);
     const totalRequestsThisMinute = totalRequests(timestamp);
     const usageEvent = {
       apiNumber: chosenIndex + 1,
@@ -1059,9 +1190,20 @@ export function getRuntimeStatus(timestamp = Date.now()) {
       penaltyUntil: resting ? latest.penaltyUntil : null,
       penaltyStartedAt: resting ? latest.penaltyStartedAt : null,
       successCounts,
-      successTotal
+      successTotal,
+      daily: dailyRows(state, timestamp)
     };
   });
+  // Soma por modelo em todas as chaves: "usado hoje / (limite x chaves)".
+  const modelDaily: Record<string, { used: number; limit: number | null; exhaustedKeys: number }> = {};
+  for (const row of apiUsage) {
+    for (const d of row.daily) {
+      const entry = modelDaily[d.model] || { used: 0, limit: d.limit === null ? null : d.limit * apiKeyStates.length, exhaustedKeys: 0 };
+      entry.used += d.used;
+      if (d.exhausted) entry.exhaustedKeys++;
+      modelDaily[d.model] = entry;
+    }
+  }
   const requestsThisMinute = totalRequests(timestamp);
   return {
     keyCount: apiKeyStates.length,
@@ -1076,6 +1218,8 @@ export function getRuntimeStatus(timestamp = Date.now()) {
     requestsThisMinute,
     capacityPerMinute: apiKeyStates.length * UPSTREAM_RPM_LIMIT,
     limitPerKey: UPSTREAM_RPM_LIMIT,
-    apiUsage
+    apiUsage,
+    modelDaily,
+    dailyResetsAt: timestamp + msUntilNextPacificMidnight(timestamp)
   };
 }
