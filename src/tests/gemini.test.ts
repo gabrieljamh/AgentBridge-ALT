@@ -6,6 +6,8 @@ import { clearRuntimeConfig, getRuntimeStatus, setRuntimeConfig } from '../servi
 import { forwardToNvidia } from '../services/nvidia.ts';
 import {
   CONTINUE_INSTRUCTION,
+  applyReasoningMode,
+  reasoningEffortFor,
   SKIP_THOUGHT_SIGNATURE,
   withContinuationTurn,
   classifyKeyFailure,
@@ -404,4 +406,38 @@ test('continue/prefill: forwarded body never ends with an assistant turn', async
   );
   assert.equal(sent.messages.at(-1).role, 'user');
   assert.equal(sent.messages.at(-2).content, 'Once upon');
+});
+
+test('reasoning: per-model effort for each app mode', () => {
+  assert.equal(reasoningEffortFor('gemini-3.6-flash', 'client'), undefined);
+  assert.equal(reasoningEffortFor('gemini-3.6-flash', 'off'), 'minimal');
+  assert.equal(reasoningEffortFor('gemini-3.8-flash', 'off'), 'low', '3.8 Flash rejects minimal');
+  assert.equal(reasoningEffortFor('gemini-3.1-flash-lite', 'off'), 'minimal');
+  assert.equal(reasoningEffortFor('gemma-4-26b-a4b-it', 'off'), 'minimal');
+  assert.equal(reasoningEffortFor('gemma-4-26b-a4b-it', 'medium'), 'high', 'Gemma only has on/off');
+  assert.equal(reasoningEffortFor('gemini-3.5-flash', 'high'), 'high');
+  const body = applyReasoningMode({ model: 'gemini-3.5-flash', reasoning_effort: 'high', reasoning: { effort: 'high' } }, 'off');
+  assert.equal(body.reasoning_effort, 'minimal');
+  assert.equal('reasoning' in body, false);
+});
+
+test('reasoning: app mode reaches upstream; rejected value retried once without override', async () => {
+  clearRuntimeConfig();
+  setRuntimeConfig({ apiKeys: ['AQ.reason'], reasoningMode: 'off' });
+  const sent: any[] = [];
+  const response = await forwardToNvidia(
+    { model: 'gemini-3.6-flash', messages: [{ role: 'user', content: 'oi' }] },
+    async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      sent.push(body);
+      if (body.reasoning_effort === 'minimal') {
+        return new Response(JSON.stringify([{ error: { code: 400, status: 'INVALID_ARGUMENT', message: 'Thinking level minimal is not supported for this model.' } }]), { status: 400 });
+      }
+      return new Response('data: {"choices":[{"delta":{"content":"ok"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n', { headers: { 'content-type': 'text/event-stream' } });
+    },
+    0
+  );
+  assert.equal(response.status, 200);
+  assert.deepEqual(sent.map((b) => b.reasoning_effort), ['minimal', undefined]);
+  clearRuntimeConfig();
 });

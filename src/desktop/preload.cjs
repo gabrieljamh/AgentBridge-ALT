@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('agentBridge', {
   selectModel: (model) => ipcRenderer.invoke('model:select', model),
   testModel: (model) => ipcRenderer.invoke('model:test', model),
   setAutoToggle: (value) => ipcRenderer.invoke('model:setAuto', value),
+  setReasoningMode: (value) => ipcRenderer.invoke('reasoning:set', value),
   updateModels: (payload) => ipcRenderer.invoke('models:update', payload),
   setLocale: (locale) => ipcRenderer.invoke('locale:set', locale),
   exportApis: () => ipcRenderer.invoke('export:apis'),

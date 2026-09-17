@@ -108,3 +108,11 @@ test('vault persists locale preference', () => {
   const unlocked = unlockConfig(filePath, 'minha-senha');
   assert.equal(unlocked.locale, 'de');
 });
+test('vault persists the reasoning mode and defaults old configs to client', () => {
+  const directory = mkdtempSync(path.join(tmpdir(), 'agentbridge-vault-'));
+  const filePath = path.join(directory, 'config.json');
+  saveConfig(filePath, 'senha', baseConfig({ apiKeys: ['AQ.one'], reasoningMode: 'off' }));
+  assert.equal(unlockConfig(filePath, 'senha').reasoningMode, 'off');
+  saveConfig(filePath, 'senha', baseConfig({ apiKeys: ['AQ.one'] }));
+  assert.equal(unlockConfig(filePath, 'senha').reasoningMode, 'client');
+});

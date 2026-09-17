@@ -45,6 +45,7 @@ const bridge = window.agentBridge || {
   selectModel: async (model) => ({ ...previewStatus, selectedModel: model }),
   testModel: async () => ({ ok: false, error: 'Unavailable in preview mode.' }),
   setAutoToggle: async (value) => ({ ...previewStatus, autoToggle: Boolean(value) }),
+  setReasoningMode: async (value) => ({ ...previewStatus, reasoningMode: value }),
   updateModels: async (payload) => ({
     ...previewStatus,
     modelCatalog: (payload && payload.catalog) || previewStatus.modelCatalog,
@@ -94,6 +95,7 @@ const elements = Object.fromEntries([
   'pricingModal', 'closePricingButton', 'pricingInputInput', 'pricingOutputInput', 'pricingModelLabel',
   'savePricingButton', 'cancelPricingButton',
   'deactivatedModelGrid', 'modelGridPanel', 'deactivatedGridPanel',
+  'reasoningOptions', 'reasoningHint',
   'messageText'
 ].map((id) => [id, byId(id)]));
 
@@ -338,8 +340,21 @@ function buildLogText(status) {
   }).join('\n');
 }
 
+function renderReasoning(status) {
+  if (!elements.reasoningOptions) return;
+  const mode = status.reasoningMode || 'client';
+  elements.reasoningOptions.querySelectorAll('.reasoning-option').forEach((button) => {
+    const active = button.dataset.mode === mode;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-checked', active ? 'true' : 'false');
+    button.disabled = !status.unlocked;
+  });
+  if (elements.reasoningHint) elements.reasoningHint.textContent = t('reasoning.hint.' + mode);
+}
+
 function renderStatus(status) {
   lastStatus = status;
+  renderReasoning(status);
   const state = status.proxyState || 'stopped';
   elements.appVersion.textContent = `v${status.appVersion}`;
   elements.proxyStatus.className = `status-badge ${state}`;
@@ -1127,6 +1142,18 @@ if (elements.closeSelectButton) {
 }
 
 // Liga/desliga a alternancia automatica de modelo.
+if (elements.reasoningOptions) {
+  elements.reasoningOptions.addEventListener('click', async (event) => {
+    const button = event.target.closest('.reasoning-option');
+    if (!button || button.disabled || !lastStatus || lastStatus.reasoningMode === button.dataset.mode) return;
+    try {
+      renderStatus(await bridge.setReasoningMode(button.dataset.mode));
+    } catch (error) {
+      if (elements.messageText) elements.messageText.textContent = error?.message || String(error);
+    }
+  });
+}
+
 if (elements.autoToggleSwitch) {
   elements.autoToggleSwitch.addEventListener('click', async () => {
     if (busyModels) return;

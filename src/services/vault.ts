@@ -17,7 +17,9 @@ import {
   DEFAULT_MODEL_PRIORITY,
   INTERNAL_API_KEY,
   REQUEST_DELAY_MS,
-  type ModelCatalogEntry
+  type ModelCatalogEntry,
+  normalizeReasoningMode,
+  type ReasoningMode
 } from '../config.ts';
 
 type CipherText = {
@@ -35,6 +37,8 @@ export type EncryptedConfig = {
   model?: string;
   // Alternancia automatica de modelo ligada? (texto puro, nao sensivel).
   autoToggle?: boolean;
+  // Raciocinio aplicado pelo proxy (texto puro, nao sensivel).
+  reasoningMode?: string;
   // Ordem de prioridade do failover automatico (ids "provider/modelo").
   modelPriority?: string[];
   // Catalogo de modelos selecionaveis, incluindo os adicionados/editados pelo usuario.
@@ -60,6 +64,8 @@ export type UnlockedConfig = {
   selectedModel: string;
   // Alternancia automatica de modelo: o proxy escolhe sozinho pela lista de prioridades.
   autoToggle: boolean;
+  // Raciocinio (thinking) aplicado pelo proxy. Ausente em configs antigas -> 'client'.
+  reasoningMode?: ReasoningMode;
   // Ordem de prioridade do failover automatico (ids "provider/modelo").
   modelPriority: string[];
   // Catalogo de modelos selecionaveis exibido no app.
@@ -216,6 +222,7 @@ export function unlockConfig(filePath: string, password: string): UnlockedConfig
     apiKeys: stored.apiKeys.map((item) => decryptValue(item, key)),
     selectedModel: stored.model && stored.model.trim() ? stored.model.trim() : DEFAULT_MODEL,
     autoToggle: typeof stored.autoToggle === 'boolean' ? stored.autoToggle : DEFAULT_AUTO_TOGGLE,
+    reasoningMode: normalizeReasoningMode(stored.reasoningMode),
     modelCatalog: activeCatalog,
     deactivatedModels,
     modelPriority: normalizePriority(stored.modelPriority, activeCatalog, deactivatedModels),
@@ -263,6 +270,7 @@ export function saveConfig(
       ? config.selectedModel.trim()
       : DEFAULT_MODEL,
     autoToggle: Boolean(config.autoToggle),
+    reasoningMode: normalizeReasoningMode(config.reasoningMode),
     modelCatalog,
     deactivatedModels,
     modelPriority: normalizePriority(config.modelPriority, modelCatalog, deactivatedModels),

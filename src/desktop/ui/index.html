@@ -95,6 +95,20 @@
           <button id="selectModelButton" class="button primary" type="button" data-i18n="electron.selectModel">Selecionar modelo</button>
         </section>
 
+        <section class="reasoning-panel" aria-label="Raciocinio">
+          <div class="reasoning-text">
+            <span class="field-label" data-i18n="electron.reasoningLabel">Raciocinio (thinking)</span>
+            <span id="reasoningHint" class="model-redirect-hint" data-i18n="electron.reasoningHint">Aplicado a toda chamada.</span>
+          </div>
+          <div id="reasoningOptions" class="reasoning-options" role="radiogroup">
+            <button type="button" class="reasoning-option" data-mode="client" data-i18n="reasoning.client">Cliente decide</button>
+            <button type="button" class="reasoning-option" data-mode="off" data-i18n="reasoning.off">Desligado</button>
+            <button type="button" class="reasoning-option" data-mode="low" data-i18n="reasoning.low">Baixo</button>
+            <button type="button" class="reasoning-option" data-mode="medium" data-i18n="reasoning.medium">Medio</button>
+            <button type="button" class="reasoning-option" data-mode="high" data-i18n="reasoning.high">Alto</button>
+          </div>
+        </section>
+
         <section class="workspace">
           <div class="workspace-header">
             <div>

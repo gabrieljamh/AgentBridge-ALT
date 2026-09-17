@@ -38,6 +38,8 @@ import {
   getRuntimeStatus,
   getSelectedModel,
   isAutoToggleEnabled,
+  getReasoningMode,
+  setReasoningMode,
   isModelDeactivated,
   onApiRequestLog,
   onApiKeyPenalized,
@@ -224,6 +226,7 @@ function getStatus() {
     port: unlockedConfig.port,
     selectedModel: getSelectedModel(),
     autoToggle: isAutoToggleEnabled(),
+    reasoningMode: getReasoningMode(),
     activeModel: getActiveModel(),
     modelPriority: unlockedConfig.modelPriority,
     modelCatalog: unlockedConfig.modelCatalog,
@@ -451,6 +454,17 @@ async function selectModel(model: unknown) {
   return getStatus();
 }
 
+// Raciocinio (thinking) aplicado pelo proxy em toda chamada. Persistido na config.
+async function saveReasoningMode(value: unknown) {
+  if (!sessionPassword) throw new Error(t('error.unlockFirst'));
+  unlockedConfig.reasoningMode = setReasoningMode(value);
+  if (unlockedConfig.apiKeys.length) {
+    saveConfig(configPath(), sessionPassword, unlockedConfig);
+  }
+  broadcastStatus();
+  return getStatus();
+}
+
 // Liga/desliga a alternancia automatica de modelo. Quando ligada, o proxy escolhe
 // sozinho o modelo de cada chamada pela lista de prioridades. Persistido junto da
 // config (texto puro).
@@ -648,6 +662,7 @@ function registerIpc() {
   ipcMain.handle('model:select', (_event, model) => selectModel(model));
   ipcMain.handle('model:test', (_event, model) => testModel(model));
   ipcMain.handle('model:setAuto', (_event, value) => setAutoMode(value));
+  ipcMain.handle('reasoning:set', (_event, value) => saveReasoningMode(value));
   ipcMain.handle('models:update', (_event, payload) => updateModels(payload));
   ipcMain.handle('clipboard:copy', (_event, value: string) => {
     clipboard.writeText(value);

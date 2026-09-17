@@ -8,6 +8,7 @@ import { autoSaveDailyUsage, loadDailyUsage } from '../services/dailyUsageStore.
 import { extractProviderMessage } from '../services/gemini.ts';
 import {
   APP_NAME,
+  REASONING_MODES,
   APP_VERSION,
   DEFAULT_AUTO_TOGGLE,
   DEFAULT_DEACTIVATED_MODELS,
@@ -629,6 +630,11 @@ async function modelsScreen(): Promise<void> {
 
     const items: Array<{ label: string; value: string; hint?: string }> = [];
     items.push({
+      label: c.accent('◈') + ' ' + t('reasoning.menu') + ' ' + c.accentStrong(t('reasoning.' + (unlockedConfig.reasoningMode || 'client'))),
+      value: 'reasoning',
+      hint: c.faint(t('reasoning.hint.' + (unlockedConfig.reasoningMode || 'client')))
+    });
+    items.push({
       label: (unlockedConfig.autoToggle ? c.accent('◉') : c.faint('◯')) +
         ' ' + t('models.autoToggle') + ' ' +
         (unlockedConfig.autoToggle ? c.accentStrong(t('models.on')) : c.faint(t('models.off'))),
@@ -651,6 +657,14 @@ async function modelsScreen(): Promise<void> {
     const choice = await selectMenu({ header, items });
     if (!choice || choice === 'back') return;
 
+    if (choice === 'reasoning') {
+      const order = REASONING_MODES;
+      const current = order.indexOf(unlockedConfig.reasoningMode || 'client');
+      unlockedConfig.reasoningMode = order[(current + 1) % order.length];
+      refreshRuntime();
+      persistToDisk();
+      continue;
+    }
     if (choice === 'auto') {
       unlockedConfig.autoToggle = !unlockedConfig.autoToggle;
       refreshRuntime();

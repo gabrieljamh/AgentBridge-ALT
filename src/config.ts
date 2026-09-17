@@ -77,6 +77,17 @@ export function modelLimitsFor(model: string): ModelLimits | undefined {
   return undefined;
 }
 
+// Raciocinio (thinking) aplicado pelo proxy em toda chamada:
+// 'client' = respeita o que o cliente mandar; 'off' = o minimo que cada modelo aceita;
+// 'low' | 'medium' | 'high' = forca o reasoning_effort.
+export type ReasoningMode = 'client' | 'off' | 'low' | 'medium' | 'high';
+export const REASONING_MODES: ReasoningMode[] = ['client', 'off', 'low', 'medium', 'high'];
+export const DEFAULT_REASONING_MODE: ReasoningMode = 'client';
+
+export function normalizeReasoningMode(value: unknown): ReasoningMode {
+  return REASONING_MODES.includes(value as ReasoningMode) ? (value as ReasoningMode) : DEFAULT_REASONING_MODE;
+}
+
 export const DEFAULT_MODEL_PRIORITY: string[] = DEFAULT_MODEL_CATALOG.map((item) => item.model);
 
 // Alternancia automatica de modelo desligada por padrao: o usuario liga no app.

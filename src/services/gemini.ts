@@ -13,7 +13,7 @@
 //    e RetryInfo (retryDelay). Limite diario => castigo ate meia-noite do
 //    Pacifico; limite por minuto => retryDelay (ou 60s).
 
-import { RATE_LIMIT_MINUTE_PENALTY_MS, modelLimitsFor } from '../config.ts';
+import { RATE_LIMIT_MINUTE_PENALTY_MS, modelLimitsFor, type ReasoningMode } from '../config.ts';
 
 // Modelo com cota 0 no tier da chave: fora do rodizio por 24h.
 export const UNAVAILABLE_MODEL_PENALTY_MS = 24 * 60 * 60_000;
@@ -114,6 +114,36 @@ export function withThoughtSignatures(messages: unknown, model?: unknown): unkno
     }
     return { ...message, tool_calls: toolCalls };
   });
+}
+
+// ---------------------------------------------------------------------------
+// Raciocinio (thinking) configurado no app
+// ---------------------------------------------------------------------------
+// O endpoint OpenAI-compativel do Gemini mapeia `reasoning_effort` para
+// thinking_level. "Desligado" usa o menor nivel que cada modelo aceita:
+// - Gemini 3.8 Flash nao aceita "minimal" (erro) -> "low".
+// - Demais Gemini 3.x e Gemma 4 -> "minimal" (Gemma so tem ligado/desligado).
+// Se o Gemini recusar o valor (HTTP 400 citando reasoning/thinking), o proxy
+// repete a chamada sem o override (ver forwardToNvidia).
+
+export function reasoningEffortFor(model: unknown, mode: ReasoningMode): string | undefined {
+  if (mode === 'client') return undefined;
+  const id = typeof model === 'string' ? model.toLowerCase() : '';
+  if (mode === 'off') return /gemini-3\.8-flash(?!-lite)/.test(id) ? 'low' : 'minimal';
+  if (/^(models\/)?gemma-/.test(id)) return mode === 'low' ? 'minimal' : 'high';
+  return mode;
+}
+
+export function applyReasoningMode<T extends Record<string, unknown>>(body: T, mode: ReasoningMode): T {
+  const effort = reasoningEffortFor(body.model, mode);
+  if (!effort) return body;
+  const next: Record<string, unknown> = { ...body, reasoning_effort: effort };
+  delete next.reasoning;
+  return next as T;
+}
+
+export function isReasoningParamError(status: number, bodyText: string) {
+  return status === 400 && /reasoning|thinking/i.test(bodyText || '');
 }
 
 // ---------------------------------------------------------------------------

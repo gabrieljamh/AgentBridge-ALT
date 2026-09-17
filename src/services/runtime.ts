@@ -8,8 +8,11 @@ import {
   RATE_LIMIT_PENALTY_MS,
   RATE_LIMIT_WINDOW_MS,
   REQUEST_DELAY_MS,
+  DEFAULT_REASONING_MODE,
   modelLimitsFor,
-  type ModelCatalogEntry
+  normalizeReasoningMode,
+  type ModelCatalogEntry,
+  type ReasoningMode
 } from '../config.ts';
 import { msUntilNextPacificMidnight } from './gemini.ts';
 
@@ -128,6 +131,7 @@ let selectedModel = DEFAULT_MODEL;
 // ainda tenha alguma chave fora de castigo (429). Assim, assim que um modelo de
 // prioridade mais alta libera uma chave, o proxy volta a usa-lo automaticamente.
 let autoToggle = false;
+let reasoningMode: ReasoningMode = DEFAULT_REASONING_MODE;
 // Ordem de prioridade do failover automatico (ids "provider/modelo").
 let modelPriority: string[] = [];
 // Ultimo modelo realmente colocado em uso (modo automatico): serve para exibir na
@@ -284,6 +288,7 @@ export function setRuntimeConfig(config: {
   requestDelayMs?: number;
   selectedModel?: string;
   autoToggle?: boolean;
+  reasoningMode?: ReasoningMode;
   modelPriority?: string[];
   localApiKey?: string;
   deactivatedModels?: ModelCatalogEntry[];
@@ -307,6 +312,9 @@ export function setRuntimeConfig(config: {
   }
   if (typeof config.autoToggle === 'boolean') {
     autoToggle = config.autoToggle;
+  }
+  if (config.reasoningMode !== undefined) {
+    reasoningMode = normalizeReasoningMode(config.reasoningMode);
   }
   if (Array.isArray(config.modelPriority)) {
     modelPriority = config.modelPriority
@@ -333,6 +341,7 @@ export function clearRuntimeConfig() {
   requestDelayMs = REQUEST_DELAY_MS;
   selectedModel = DEFAULT_MODEL;
   autoToggle = false;
+  reasoningMode = DEFAULT_REASONING_MODE;
   modelPriority = [];
   activeModel = DEFAULT_MODEL;
   localApiKey = INTERNAL_API_KEY;
@@ -374,6 +383,15 @@ export function isModelDeactivated(model: string): boolean {
 export function setAutoToggle(value: unknown) {
   autoToggle = Boolean(value);
   return autoToggle;
+}
+
+export function setReasoningMode(value: unknown) {
+  reasoningMode = normalizeReasoningMode(value);
+  return reasoningMode;
+}
+
+export function getReasoningMode(): ReasoningMode {
+  return reasoningMode;
 }
 
 export function isAutoToggleEnabled() {
@@ -1214,6 +1232,7 @@ export function getRuntimeStatus(timestamp = Date.now()) {
     requestDelayMs,
     selectedModel: getSelectedModel(),
     autoToggle,
+    reasoningMode,
     modelPriority: modelPriority.slice(),
     activeModel: getActiveModel(),
     deactivatedModelIds: [...deactivatedIds],

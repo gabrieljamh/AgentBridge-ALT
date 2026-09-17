@@ -20,6 +20,7 @@ import {
   markApiSuccess,
   markApiUpstreamError,
   markApiKeyDisabled,
+  getReasoningMode,
   markDailyBudgetExhausted,
   type AcquireApiKeyOptions
 } from './runtime.ts';
@@ -32,6 +33,8 @@ import {
   readErrorText,
   rememberFromToolCalls,
   rememberToolCallExtra,
+  applyReasoningMode,
+  isReasoningParamError,
   withContinuationTurn,
   withThoughtSignatures,
   type KeyFailure
@@ -771,9 +774,10 @@ async function readRemainingText(
   return text;
 }
 
-function buildUpstreamBody(body: Record<string, unknown>) {
+function buildUpstreamBody(body: Record<string, unknown>, options: { skipReasoning?: boolean } = {}) {
+  const withReasoning = options.skipReasoning ? body : applyReasoningMode(body, getReasoningMode());
   return {
-    ...body,
+    ...withReasoning,
     ...(Array.isArray(body.messages) ? { messages: withContinuationTurn(withThoughtSignatures(body.messages, body.model)) } : {}),
     stream: true,
     stream_options: {
@@ -1017,6 +1021,8 @@ export async function forwardToNvidia(
   await reserveSendSlot({ delayMs, now, sleep: rateLimitOptions.sleep });
 
   let attempt = 0;
+  // true depois que o Gemini recusou o reasoning_effort escolhido no app.
+  let skipReasoning = false;
   while (true) {
     attempt++;
     let acquired;
@@ -1046,7 +1052,7 @@ export async function forwardToNvidia(
     }
     apiNumber = acquired.apiNumber;
 
-    const upstreamBody = buildUpstreamBody(body);
+    const upstreamBody = buildUpstreamBody(body, { skipReasoning });
 
     // ======================================================================
     // Com hedge: usa race entre readFirstChunk e timer
@@ -1111,6 +1117,13 @@ export async function forwardToNvidia(
         markApiResponseCompleted({ apiNumber, requestStartedAt, attempt, maxAttempts, timestamp: now() });
         await reader.cancel().catch(() => {});
 
+        if (!skipReasoning && (upstreamBody as Record<string, unknown>).reasoning_effort !== body.reasoning_effort
+          && isReasoningParamError(response.status, await readErrorText(response))) {
+          // O modelo nao aceita o nivel de raciocinio do app: repete sem o override.
+          skipReasoning = true;
+          attempt--;
+          continue;
+        }
         const keyFailure = await noteKeyLevelFailure(response, apiNumber);
         if ((keyFailure === 'invalid_key' || keyFailure === 'billing') && attempt < maxAttempts) {
           // Problema da chave, nao do modelo: tenta a proxima chave no mesmo modelo.
