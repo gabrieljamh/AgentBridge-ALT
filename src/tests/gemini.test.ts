@@ -5,7 +5,9 @@ import { FIXED_CLIENT_MODEL, INTERNAL_API_KEY } from '../config.ts';
 import { clearRuntimeConfig, getRuntimeStatus, setRuntimeConfig } from '../services/runtime.ts';
 import { forwardToNvidia } from '../services/nvidia.ts';
 import {
+  CONTINUE_INSTRUCTION,
   SKIP_THOUGHT_SIGNATURE,
+  withContinuationTurn,
   classifyKeyFailure,
   classifyRateLimitBody,
   extractProviderMessage,
@@ -366,4 +368,40 @@ test('429 so com mensagem: Flash-Lite 500 = diario, tokens por minuto = minuto',
   const tpm = classifyRateLimitBody(JSON.stringify({ error: { message: 'Quota exceeded for metric: x/generate_content_free_tier_input_token_count, limit: 250000, model: gemini-3.6-flash Please retry in 20s.' } }));
   assert.equal(tpm.scope, 'minute');
   assert.equal(tpm.penaltyMs, 20_000);
+});
+
+test('continue/prefill: trailing assistant text gets a user "continue" turn', () => {
+  const msgs = [
+    { role: 'system', content: 'You are Aria.' },
+    { role: 'user', content: 'Tell me about the tavern.' },
+    { role: 'assistant', content: 'The tavern smelled of' }
+  ];
+  const out = withContinuationTurn(msgs) as any[];
+  assert.equal(out.length, 4);
+  assert.deepEqual(out[2], msgs[2], 'partial reply is kept');
+  assert.deepEqual(out[3], { role: 'user', content: CONTINUE_INSTRUCTION });
+  assert.equal((withContinuationTurn(msgs.slice(0, 2)) as any[]).length, 2, 'normal requests untouched');
+});
+
+test('continue/prefill: empty trailing assistant is dropped; tool-call turns untouched', () => {
+  const empty = withContinuationTurn([{ role: 'user', content: 'hi' }, { role: 'assistant', content: '' }]) as any[];
+  assert.deepEqual(empty, [{ role: 'user', content: 'hi' }]);
+  const tool = [{ role: 'user', content: 'x' }, { role: 'assistant', content: null, tool_calls: [{ id: 'a', type: 'function', function: { name: 'f', arguments: '{}' } }] }];
+  assert.equal(withContinuationTurn(tool), tool);
+});
+
+test('continue/prefill: forwarded body never ends with an assistant turn', async () => {
+  clearRuntimeConfig();
+  setRuntimeConfig({ apiKeys: ['AQ.continue'] });
+  let sent: any;
+  await forwardToNvidia(
+    { model: 'gemini-3.5-flash-lite', messages: [{ role: 'user', content: 'go' }, { role: 'assistant', content: 'Once upon' }] },
+    async (_url, init) => {
+      sent = JSON.parse(String(init?.body));
+      return new Response('data: {"choices":[{"delta":{"content":" a time"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n', { headers: { 'content-type': 'text/event-stream' } });
+    },
+    0
+  );
+  assert.equal(sent.messages.at(-1).role, 'user');
+  assert.equal(sent.messages.at(-2).content, 'Once upon');
 });

@@ -117,6 +117,35 @@ export function withThoughtSignatures(messages: unknown, model?: unknown): unkno
 }
 
 // ---------------------------------------------------------------------------
+// "Continuar" (prefill): conversa terminando em turno do assistente
+// ---------------------------------------------------------------------------
+// Clientes de RP (XoulAI /continue, SillyTavern "continue") mandam a resposta
+// parcial como ULTIMA mensagem, com role "assistant", esperando que o modelo siga
+// dali. O Gemini recusa: 400 "Requests ending with a model turn are not supported".
+// Mantemos o texto parcial como turno do assistente e acrescentamos um turno do
+// usuario pedindo para continuar exatamente de onde parou, sem repetir.
+
+export const CONTINUE_INSTRUCTION =
+  '[Continue your previous message exactly where it stopped. Do not repeat any text that was already written, '
+  + 'do not add a preamble or acknowledgement, and keep the same language, voice and formatting.]';
+
+export function withContinuationTurn(messages: unknown): unknown {
+  if (!Array.isArray(messages) || !messages.length) return messages;
+  const last = messages[messages.length - 1];
+  if (!isRecord(last) || last.role !== 'assistant') return messages;
+  // Turno com tool_calls e um pedido de ferramenta, nao um prefill.
+  if (Array.isArray(last.tool_calls) && last.tool_calls.length) return messages;
+  const content = last.content;
+  const hasText = typeof content === 'string'
+    ? content.trim().length > 0
+    : Array.isArray(content) && content.some((part: any) => typeof part?.text === 'string' && part.text.trim());
+  const base = hasText ? messages : messages.slice(0, -1);
+  const tail = base[base.length - 1];
+  if (!hasText && isRecord(tail) && tail.role !== 'assistant') return base;
+  return [...base, { role: 'user', content: CONTINUE_INSTRUCTION }];
+}
+
+// ---------------------------------------------------------------------------
 // 429
 // ---------------------------------------------------------------------------
 

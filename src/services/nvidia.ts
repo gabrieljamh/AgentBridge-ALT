@@ -32,6 +32,7 @@ import {
   readErrorText,
   rememberFromToolCalls,
   rememberToolCallExtra,
+  withContinuationTurn,
   withThoughtSignatures,
   type KeyFailure
 } from './gemini.ts';
@@ -773,7 +774,7 @@ async function readRemainingText(
 function buildUpstreamBody(body: Record<string, unknown>) {
   return {
     ...body,
-    ...(Array.isArray(body.messages) ? { messages: withThoughtSignatures(body.messages, body.model) } : {}),
+    ...(Array.isArray(body.messages) ? { messages: withContinuationTurn(withThoughtSignatures(body.messages, body.model)) } : {}),
     stream: true,
     stream_options: {
       ...(body.stream_options && typeof body.stream_options === 'object'
